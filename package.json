@@ -13,6 +13,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "check:cloud": "node scripts/check-cloud.mjs",
+    "verify:neon": "tsx scripts/verify-neon.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {

@@ -3,6 +3,29 @@
 Your **accounts, posts, chats, and media stay saved** when you update the app.
 Code updates go to Vercel; data lives in Neon + Blob and is never wiped by a deploy.
 
+## Agent / you handoff (required once)
+
+Code is already cloud-ready. These account steps need **you** (browsers cannot create your Neon/GitHub/Vercel logins):
+
+1. Create Neon → paste the pooled `DATABASE_URL` into `.env` (replace the `USER:PASSWORD@ep-xxxx…` placeholder).
+2. Create a GitHub repo → run the push commands in §2 (or tell the agent your GitHub username after installing [GitHub CLI](https://cli.github.com)).
+3. Import the repo in Vercel → set the env vars in §3 → enable Blob in §4.
+4. Reply in chat with: “Neon is in `.env`” (and your public Vercel URL when deploy finishes) so migrate + live verify can run.
+
+**Windows tip:** if you previously set `DATABASE_URL` in your PowerShell session (e.g. to `localhost`), clear it before Prisma so `.env` wins:
+
+```powershell
+Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
+npm run check:cloud
+npx prisma migrate deploy
+```
+
+Check readiness anytime (prints OK/FAIL only, never secrets):
+
+```powershell
+npm run check:cloud
+```
+
 ## 1. Create Neon (database)
 
 1. Go to [https://neon.tech](https://neon.tech) and sign up (free).

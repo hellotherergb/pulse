@@ -22,22 +22,60 @@ function loadEnvFile(file) {
   }
 }
 
+// Prefer project .env over inherited shell env so placeholders are not masked.
+const shellEnv = { ...process.env };
+for (const key of [
+  "DATABASE_URL",
+  "NEXTAUTH_SECRET",
+  "NEXTAUTH_URL",
+  "BLOB_READ_WRITE_TOKEN",
+]) {
+  delete process.env[key];
+}
 loadEnvFile(resolve(process.cwd(), ".env"));
 loadEnvFile(resolve(process.cwd(), ".env.local"));
+// Fall back to shell only when project files omit the key.
+for (const key of [
+  "DATABASE_URL",
+  "NEXTAUTH_SECRET",
+  "NEXTAUTH_URL",
+  "BLOB_READ_WRITE_TOKEN",
+]) {
+  if (!process.env[key] && shellEnv[key]) process.env[key] = shellEnv[key];
+}
+
+function isRealNeonUrl(v) {
+  if (typeof v !== "string") return false;
+  if (!(v.startsWith("postgresql://") || v.startsWith("postgres://"))) {
+    return false;
+  }
+  if (/USER:PASSWORD|ep-xxxx|xxxx\.region|PASSWORD@/.test(v)) return false;
+  try {
+    const u = new URL(v);
+    return (
+      u.hostname.includes("neon.tech") &&
+      u.username !== "USER" &&
+      u.hostname !== "localhost" &&
+      u.hostname !== "127.0.0.1"
+    );
+  } catch {
+    return false;
+  }
+}
 
 const checks = [
   {
     key: "DATABASE_URL",
-    ok: (v) =>
-      typeof v === "string" &&
-      v.startsWith("postgresql://") &&
-      !v.includes("USER:PASSWORD"),
-    hint: "Paste your Neon pooled connection string",
+    ok: isRealNeonUrl,
+    hint: "Paste your real Neon pooled connection string into .env (see DEPLOY.md)",
   },
   {
     key: "NEXTAUTH_SECRET",
-    ok: (v) => typeof v === "string" && v.length >= 16 && !v.includes("replace-with"),
-    hint: "Set a long random secret",
+    ok: (v) =>
+      typeof v === "string" &&
+      v.length >= 32 &&
+      !/replace-with|change-me|dev-secret/i.test(v),
+    hint: "Set a long random secret (32+ chars, not a placeholder)",
   },
   {
     key: "NEXTAUTH_URL",
