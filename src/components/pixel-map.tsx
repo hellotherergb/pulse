@@ -11,19 +11,22 @@ import {
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
+  DEFAULT_PIXEL_COLOR,
   indexToXY,
   MAP_SIZE,
   PIXEL_MESSAGE_MAX,
   PIXEL_PRICE,
+  PLACE_PALETTE,
   xyToIndex,
   type PixelPublic,
 } from "@/lib/map";
 import { buyPixelAction, updatePixelAction } from "@/lib/map-actions";
 
-const EMPTY = "#1a2330";
-const GRID = "rgba(255,255,255,0.06)";
+const BOARD = "#FFFFFF";
+const VOID = "#DAE0E6";
+const GRID = "rgba(0,0,0,0.12)";
 const MIN_SCALE = 0.35;
-const MAX_SCALE = 24;
+const MAX_SCALE = 28;
 const BASE_CELL = 1;
 
 type Props = {
@@ -56,11 +59,11 @@ export function PixelMap({ initialPixels, userId, sparksBalance }: Props) {
   const [pixels, setPixels] = useState(initialPixels);
   const [ownedCount, setOwnedCount] = useState(initialPixels.length);
   const [selection, setSelection] = useState<Selection | null>(null);
-  const [color, setColor] = useState("#3DFFB0");
+  const [color, setColor] = useState<string>(DEFAULT_PIXEL_COLOR);
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const [hoverLabel, setHoverLabel] = useState<string | null>(null);
+  const [coordsLabel, setCoordsLabel] = useState("0, 0");
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -88,7 +91,7 @@ export function PixelMap({ initialPixels, userId, sparksBalance }: Props) {
     const cell = BASE_CELL * scale * dpr;
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = "#0b0f14";
+    ctx.fillStyle = VOID;
     ctx.fillRect(0, 0, w, h);
 
     ctx.save();
@@ -99,8 +102,14 @@ export function PixelMap({ initialPixels, userId, sparksBalance }: Props) {
     const right = Math.min(MAP_SIZE, Math.ceil((vx + cssW) / (BASE_CELL * scale)));
     const bottom = Math.min(MAP_SIZE, Math.ceil((vy + cssH) / (BASE_CELL * scale)));
 
-    ctx.fillStyle = EMPTY;
-    ctx.fillRect(left * cell, top * cell, (right - left) * cell, (bottom - top) * cell);
+    // White board
+    ctx.fillStyle = BOARD;
+    ctx.fillRect(0, 0, MAP_SIZE * cell, MAP_SIZE * cell);
+
+    // Soft board edge
+    ctx.strokeStyle = "rgba(0,0,0,0.18)";
+    ctx.lineWidth = Math.max(1, dpr);
+    ctx.strokeRect(0.5, 0.5, MAP_SIZE * cell - 1, MAP_SIZE * cell - 1);
 
     for (const pixel of pixelsRef.current.values()) {
       const { x, y } = indexToXY(pixel.index);
@@ -109,9 +118,9 @@ export function PixelMap({ initialPixels, userId, sparksBalance }: Props) {
       ctx.fillRect(x * cell, y * cell, cell + 0.5, cell + 0.5);
     }
 
-    if (scale >= 4) {
+    if (scale >= 3.5) {
       ctx.strokeStyle = GRID;
-      ctx.lineWidth = Math.max(1, dpr * 0.5);
+      ctx.lineWidth = Math.max(1, dpr * 0.4);
       ctx.beginPath();
       for (let gx = left; gx <= right; gx++) {
         ctx.moveTo(gx * cell, top * cell);
@@ -128,9 +137,13 @@ export function PixelMap({ initialPixels, userId, sparksBalance }: Props) {
     if (sel) {
       const idx = sel.kind === "empty" ? sel.index : sel.pixel.index;
       const { x, y } = indexToXY(idx);
-      ctx.strokeStyle = "#3dffb0";
-      ctx.lineWidth = Math.max(2, dpr * 1.5);
-      ctx.strokeRect(x * cell + 1, y * cell + 1, cell - 2, cell - 2);
+      const pad = Math.max(1, dpr * 0.75);
+      // Place-style dual outline
+      ctx.lineWidth = Math.max(2, dpr * 1.25);
+      ctx.strokeStyle = "#FFFFFF";
+      ctx.strokeRect(x * cell - pad, y * cell - pad, cell + pad * 2, cell + pad * 2);
+      ctx.strokeStyle = "#000000";
+      ctx.strokeRect(x * cell + pad * 0.5, y * cell + pad * 0.5, cell - pad, cell - pad);
     }
 
     ctx.restore();
@@ -159,7 +172,7 @@ export function PixelMap({ initialPixels, userId, sparksBalance }: Props) {
     if (!wrap) return;
 
     const fit = Math.min(wrap.clientWidth, wrap.clientHeight) / MAP_SIZE;
-    const scale = Math.max(MIN_SCALE, Math.min(1.2, fit * 0.95));
+    const scale = Math.max(MIN_SCALE, Math.min(1.35, fit * 0.92));
     viewRef.current = {
       scale,
       x: (MAP_SIZE * scale - wrap.clientWidth) / 2,
@@ -252,17 +265,9 @@ export function PixelMap({ initialPixels, userId, sparksBalance }: Props) {
     }
 
     const index = screenToIndex(e.clientX, e.clientY);
-    if (index == null) {
-      setHoverLabel(null);
-      return;
-    }
+    if (index == null) return;
     const { x, y } = indexToXY(index);
-    const pixel = pixelsRef.current.get(index);
-    setHoverLabel(
-      pixel
-        ? `(${x}, ${y}) · @${pixel.ownerHandle}`
-        : `(${x}, ${y}) · available · ✦${PIXEL_PRICE}`,
-    );
+    setCoordsLabel(`${x}, ${y}`);
   }
 
   function onPointerUp(e: ReactPointerEvent) {
@@ -277,14 +282,17 @@ export function PixelMap({ initialPixels, userId, sparksBalance }: Props) {
       return;
     }
 
+    const { x, y } = indexToXY(index);
+    setCoordsLabel(`${x}, ${y}`);
+
     const pixel = pixelsRef.current.get(index);
     if (pixel) {
       setSelection({ kind: "owned", pixel });
-      setColor(pixel.color);
+      const inPalette = (PLACE_PALETTE as readonly string[]).includes(pixel.color);
+      setColor(inPalette ? pixel.color : DEFAULT_PIXEL_COLOR);
       setMessage(pixel.message);
     } else {
       setSelection({ kind: "empty", index });
-      setColor("#3DFFB0");
       setMessage("");
     }
     setError(null);
@@ -355,32 +363,35 @@ export function PixelMap({ initialPixels, userId, sparksBalance }: Props) {
   const coords = selectedIndex != null ? indexToXY(selectedIndex) : null;
   const isMine =
     selection?.kind === "owned" && selection.pixel.ownerId === userId;
+  const canEdit = selection?.kind === "empty" || isMine;
   const canBuy = selection?.kind === "empty" && sparksBalance >= PIXEL_PRICE;
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-end justify-between gap-3 px-4 pt-1">
-        <div>
-          <h1 className="font-display text-2xl font-700">Pixel Map</h1>
-          <p className="mt-1 text-sm text-muted">
-            1,000,000 pixels. Claim one for{" "}
-            <span className="font-semibold text-mint">✦{PIXEL_PRICE}</span> — your
-            color, your message.
+    <div className="place-shell flex h-[calc(100dvh-7.5rem)] flex-col bg-[#DAE0E6] text-[#1A1A1B]">
+      <header className="flex items-center justify-between gap-3 border-b border-black/10 bg-white px-3 py-2.5">
+        <div className="min-w-0">
+          <h1 className="truncate text-[15px] font-bold tracking-tight">
+            r/Pulse Place
+          </h1>
+          <p className="truncate text-[11px] text-[#576F76]">
+            1,000,000 pixels · ✦{PIXEL_PRICE} each
           </p>
         </div>
-        <div className="shrink-0 text-right text-xs text-muted">
-          <p className="font-semibold text-warm">
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="rounded-full bg-[#F6F7F8] px-2.5 py-1 text-[11px] font-semibold text-[#576F76]">
             {ownedCount.toLocaleString()}
-            <span className="text-muted"> / 1,000,000</span>
-          </p>
-          <p>claimed</p>
+            <span className="font-normal"> / 1M</span>
+          </div>
+          <div className="rounded-full bg-[#FFF5F0] px-2.5 py-1 text-[11px] font-bold text-[#FF4500]">
+            ✦ {sparksBalance.toLocaleString()}
+          </div>
         </div>
-      </div>
+      </header>
 
-      <div className="relative mx-4 overflow-hidden rounded-2xl border border-line bg-ink-2">
+      <div className="relative min-h-0 flex-1">
         <div
           ref={wrapRef}
-          className="relative h-[min(62vh,420px)] w-full touch-none select-none"
+          className="absolute inset-0 touch-none select-none"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -391,125 +402,143 @@ export function PixelMap({ initialPixels, userId, sparksBalance }: Props) {
           <canvas ref={canvasRef} className="block h-full w-full cursor-crosshair" />
         </div>
 
-        <div className="pointer-events-none absolute left-3 top-3 rounded-full border border-line bg-ink/80 px-2.5 py-1 text-[11px] text-muted backdrop-blur">
-          {hoverLabel ?? "Drag to pan · scroll to zoom · tap a pixel"}
+        <div className="pointer-events-none absolute left-2 top-2 rounded bg-white/90 px-2 py-1 font-mono text-[11px] font-semibold text-[#1A1A1B] shadow-sm ring-1 ring-black/10">
+          ({coordsLabel})
         </div>
 
-        <div className="absolute bottom-3 right-3 flex gap-1.5">
-          <button
-            type="button"
-            onClick={() => zoomBy(1 / 1.25)}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-line bg-ink/85 text-lg text-warm backdrop-blur hover:border-mint/40"
-            aria-label="Zoom out"
-          >
-            −
-          </button>
+        <div className="absolute bottom-2 right-2 flex flex-col gap-1">
           <button
             type="button"
             onClick={() => zoomBy(1.25)}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-line bg-ink/85 text-lg text-warm backdrop-blur hover:border-mint/40"
+            className="flex h-9 w-9 items-center justify-center rounded-md bg-white text-lg font-bold text-[#1A1A1B] shadow-sm ring-1 ring-black/10 hover:bg-[#F6F7F8]"
             aria-label="Zoom in"
           >
             +
           </button>
+          <button
+            type="button"
+            onClick={() => zoomBy(1 / 1.25)}
+            className="flex h-9 w-9 items-center justify-center rounded-md bg-white text-lg font-bold text-[#1A1A1B] shadow-sm ring-1 ring-black/10 hover:bg-[#F6F7F8]"
+            aria-label="Zoom out"
+          >
+            −
+          </button>
         </div>
       </div>
 
-      {selection && coords ? (
-        <div className="animate-fade-up mx-4 rounded-2xl border border-line bg-ink-2 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-muted">Pixel</p>
-              <p className="font-display text-lg font-600">
-                ({coords.x}, {coords.y})
-              </p>
-              <p className="text-xs text-muted">#{selectedIndex}</p>
+      <div className="border-t border-black/10 bg-white pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+        {selection && coords ? (
+          <div className="animate-fade-up px-3 pt-2.5">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[12px] font-bold">
+                  Pixel ({coords.x}, {coords.y})
+                </p>
+                {selection.kind === "owned" ? (
+                  <p className="truncate text-[11px] text-[#576F76]">
+                    by{" "}
+                    <Link
+                      href={`/app/u/${selection.pixel.ownerHandle}`}
+                      className="font-semibold text-[#FF4500] hover:underline"
+                    >
+                      @{selection.pixel.ownerHandle}
+                    </Link>
+                    {selection.pixel.message
+                      ? ` · “${selection.pixel.message}”`
+                      : null}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-[#576F76]">
+                    Empty — claim it for ✦{PIXEL_PRICE}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelection(null)}
+                className="rounded px-2 py-1 text-[11px] font-semibold text-[#576F76] hover:bg-[#F6F7F8]"
+              >
+                Clear
+              </button>
             </div>
-            {selection.kind === "owned" ? (
-              <div className="text-right">
-                <p className="text-xs text-muted">Owned by</p>
-                <Link
-                  href={`/app/u/${selection.pixel.ownerHandle}`}
-                  className="text-sm font-semibold text-mint hover:underline"
-                >
-                  @{selection.pixel.ownerHandle}
-                </Link>
-              </div>
-            ) : (
-              <div className="rounded-full border border-mint/30 bg-mint/10 px-2.5 py-1 text-xs font-bold text-mint">
-                ✦{PIXEL_PRICE}
-              </div>
-            )}
-          </div>
 
-          {selection.kind === "owned" && selection.pixel.message ? (
-            <p className="mt-3 rounded-xl bg-ink/50 px-3 py-2 text-sm leading-snug">
-              “{selection.pixel.message}”
-            </p>
-          ) : null}
-
-          {(selection.kind === "empty" || isMine) && (
-            <div className="mt-4 space-y-3">
-              <label className="flex items-center justify-between gap-3 text-sm">
-                <span className="text-muted">Color</span>
-                <span className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={color}
-                    onChange={(e) => setColor(e.target.value.toUpperCase())}
-                    className="h-9 w-12 cursor-pointer rounded-lg border border-line bg-transparent p-0.5"
-                  />
-                  <input
-                    type="text"
-                    value={color}
-                    onChange={(e) => setColor(e.target.value.toUpperCase())}
-                    maxLength={7}
-                    className="w-24 rounded-lg border border-line bg-ink px-2 py-1.5 font-mono text-xs uppercase"
-                  />
-                </span>
-              </label>
-
-              <label className="block text-sm">
-                <span className="mb-1.5 block text-muted">Message</span>
-                <textarea
+            {canEdit ? (
+              <>
+                <input
+                  type="text"
                   value={message}
                   onChange={(e) =>
                     setMessage(e.target.value.slice(0, PIXEL_MESSAGE_MAX))
                   }
-                  rows={2}
                   maxLength={PIXEL_MESSAGE_MAX}
-                  placeholder="Leave a note on this pixel…"
-                  className="w-full resize-none rounded-xl border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-mint/40"
+                  placeholder="Optional message…"
+                  className="mb-2 w-full rounded-md border border-black/10 bg-[#F6F7F8] px-2.5 py-1.5 text-[12px] outline-none focus:border-[#FF4500]/60"
                 />
-                <span className="mt-1 block text-right text-[10px] text-muted">
-                  {message.length}/{PIXEL_MESSAGE_MAX}
-                </span>
-              </label>
+                <button
+                  type="button"
+                  disabled={pending || (selection.kind === "empty" && !canBuy)}
+                  onClick={submit}
+                  className="mb-2 w-full rounded-full bg-[#FF4500] py-2 text-[13px] font-bold text-white transition hover:bg-[#E03D00] disabled:opacity-40"
+                >
+                  {pending
+                    ? "…"
+                    : selection.kind === "empty"
+                      ? canBuy
+                        ? `Place pixel · ✦${PIXEL_PRICE}`
+                        : "Not enough Sparks"
+                      : "Update pixel"}
+                </button>
+              </>
+            ) : null}
 
-              <button
-                type="button"
-                disabled={pending || (selection.kind === "empty" && !canBuy)}
-                onClick={submit}
-                className="w-full rounded-full bg-mint py-2.5 text-sm font-bold text-ink transition hover:bg-mint-dim disabled:opacity-40"
-              >
-                {pending
-                  ? "…"
-                  : selection.kind === "empty"
-                    ? canBuy
-                      ? `Buy for ✦${PIXEL_PRICE}`
-                      : "Not enough Sparks"
-                    : "Save changes"}
-              </button>
-            </div>
-          )}
+            {error ? (
+              <p className="mb-2 text-[11px] font-medium text-[#EA0027]">{error}</p>
+            ) : null}
+          </div>
+        ) : (
+          <p className="px-3 pt-2 text-center text-[11px] text-[#576F76]">
+            Pan · zoom · tap a white pixel to place
+          </p>
+        )}
 
-          {error ? <p className="mt-2 text-xs text-danger">{error}</p> : null}
+        <div className="px-2 pb-1 pt-1">
+          <div className="flex gap-1 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {PLACE_PALETTE.map((swatch) => {
+              const active = color === swatch;
+              const light = swatch === "#FFFFFF" || swatch === "#E4E4E4" || swatch === "#FFD635";
+              return (
+                <button
+                  key={swatch}
+                  type="button"
+                  aria-label={`Color ${swatch}`}
+                  aria-pressed={active}
+                  onClick={() => setColor(swatch)}
+                  className={`h-8 w-8 shrink-0 rounded-sm ring-2 transition ${
+                    active
+                      ? "scale-110 ring-[#1A1A1B]"
+                      : "ring-transparent hover:ring-black/25"
+                  } ${light ? "border border-black/15" : ""}`}
+                  style={{ backgroundColor: swatch }}
+                />
+              );
+            })}
+          </div>
+          <div className="mt-1 flex items-center justify-between px-1">
+            <span className="text-[10px] font-medium uppercase tracking-wide text-[#576F76]">
+              Palette
+            </span>
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#F6F7F8] px-2 py-0.5 text-[10px] font-semibold"
+            >
+              <span
+                className="h-2.5 w-2.5 rounded-sm border border-black/15"
+                style={{ backgroundColor: color }}
+              />
+              {color}
+            </span>
+          </div>
         </div>
-      ) : (
-        <p className="px-4 pb-2 text-center text-xs text-muted">
-          Tap an empty pixel to claim it. Pinch/scroll to zoom into the million.
-        </p>
-      )}
+      </div>
     </div>
   );
 }

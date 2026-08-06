@@ -173,3 +173,10 @@ a {
     radial-gradient(ellipse 70% 50% at 50% 100%, rgba(61, 255, 176, 0.06), transparent 60%),
     var(--ink);
 }
+
+/* Reddit Place–style map page */
+.place-shell {
+  margin-top: -0.25rem;
+  background: #dae0e6;
+  color: #1a1a1b;
+}
