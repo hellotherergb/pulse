@@ -24,6 +24,18 @@ export function TopBar({
           </Link>
         ) : null}
         <Link
+          href="/app/map"
+          aria-label="Pixel Map"
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-muted transition hover:border-mint/40 hover:text-mint"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <rect x="4" y="4" width="6" height="6" />
+            <rect x="14" y="4" width="6" height="6" />
+            <rect x="4" y="14" width="6" height="6" />
+            <rect x="14" y="14" width="6" height="6" />
+          </svg>
+        </Link>
+        <Link
           href="/app/messages"
           aria-label="Messages"
           className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-muted transition hover:border-mint/40 hover:text-mint"

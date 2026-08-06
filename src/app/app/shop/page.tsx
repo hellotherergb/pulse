@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { COSMETICS, SLOT_LABELS, type CosmeticSlot } from "@/lib/cosmetics";
@@ -37,6 +38,19 @@ export default async function ShopPage() {
           ✦ {user.sparksBalance.toLocaleString()}
         </div>
       </div>
+
+      <Link
+        href="/app/map"
+        className="mt-5 flex items-center justify-between rounded-2xl border border-mint/25 bg-gradient-to-r from-mint/15 to-transparent px-4 py-3 transition hover:border-mint/45"
+      >
+        <div>
+          <p className="font-display text-base font-600">Pixel Map</p>
+          <p className="text-xs text-muted">
+            Claim any of 1,000,000 pixels for ✦1 — color + message.
+          </p>
+        </div>
+        <span className="text-mint">→</span>
+      </Link>
 
       {SLOT_ORDER.map((slot) => (
         <section key={slot} className="mt-7">

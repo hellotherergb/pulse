@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 
@@ -50,6 +51,14 @@ export default async function WalletPage() {
           <span className="font-semibold text-mint">+10 Sparks</span> when someone
           follows you.
         </p>
+        <p className="text-muted">
+          <span className="font-semibold text-mint">✦1</span> claims a pixel on
+          the{" "}
+          <Link href="/app/map" className="font-semibold text-warm underline-offset-2 hover:underline">
+            Pixel Map
+          </Link>
+          .
+        </p>
         <p className="text-xs text-muted/70">
           Self-views and self-follows never pay. Unfollow does not claw back.
         </p>
@@ -73,7 +82,11 @@ export default async function WalletPage() {
                     ? "View earned"
                     : tx.reason === "FOLLOW_EARN"
                       ? "Follow earned"
-                      : "Shop purchase"}
+                      : tx.reason === "PIXEL_BUY"
+                        ? "Pixel purchase"
+                        : tx.reason === "ADMIN_REWARD"
+                          ? "Admin reward"
+                          : "Shop purchase"}
                 </p>
                 <p className="text-xs text-muted">{tx.meta}</p>
               </div>

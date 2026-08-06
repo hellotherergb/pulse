@@ -32,9 +32,24 @@ model User {
   followers      Follow[]        @relation("Following")
   following      Follow[]        @relation("Follower")
   ownedCosmetics OwnedCosmetic[]
+  mapPixels      MapPixel[]
   conversationsA Conversation[]  @relation("UserA")
   conversationsB Conversation[]  @relation("UserB")
   messages       Message[]
+}
+
+model MapPixel {
+  id        String   @id @default(cuid())
+  index     Int      @unique // 0..999999 on a 1000×1000 grid
+  ownerId   String
+  color     String
+  message   String   @default("") @db.VarChar(140)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
 }
 
 model Post {
@@ -103,7 +118,7 @@ model Transaction {
   id        String   @id @default(cuid())
   userId    String
   amount    Int
-  reason    String // VIEW_EARN | FOLLOW_EARN | SHOP_SPEND
+  reason    String // VIEW_EARN | FOLLOW_EARN | SHOP_SPEND | PIXEL_BUY | ADMIN_REWARD
   meta      String   @default("")
   createdAt DateTime @default(now())
 
