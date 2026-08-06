@@ -1,0 +1,75 @@
+import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/session";
+import { COSMETICS, SLOT_LABELS, type CosmeticSlot } from "@/lib/cosmetics";
+import { STICKER_PACKS } from "@/lib/stickers";
+import { ShopItemCard } from "@/components/shop-item";
+import { StickerPackCard } from "@/components/sticker-pack-card";
+
+const SLOT_ORDER: CosmeticSlot[] = ["frame", "badge", "title", "bg"];
+
+export default async function ShopPage() {
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const owned = await prisma.ownedCosmetic.findMany({
+    where: { userId: user.id },
+    select: { itemId: true },
+  });
+  const ownedSet = new Set(owned.map((o) => o.itemId));
+
+  const equipped: Record<CosmeticSlot, string> = {
+    frame: user.equippedFrame,
+    badge: user.equippedBadge,
+    title: user.equippedTitle,
+    bg: user.equippedBg,
+  };
+
+  return (
+    <div className="px-4 py-4">
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-700">Shop</h1>
+          <p className="mt-1 text-sm text-muted">
+            Spend Sparks on cosmetics for your avatar & profile.
+          </p>
+        </div>
+        <div className="rounded-full border border-mint/30 bg-mint/10 px-3 py-1.5 text-sm font-bold text-mint">
+          ✦ {user.sparksBalance.toLocaleString()}
+        </div>
+      </div>
+
+      {SLOT_ORDER.map((slot) => (
+        <section key={slot} className="mt-7">
+          <h2 className="font-display text-lg font-600">{SLOT_LABELS[slot]}</h2>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            {COSMETICS.filter((c) => c.slot === slot).map((item) => (
+              <ShopItemCard
+                key={item.id}
+                item={item}
+                owned={ownedSet.has(item.id)}
+                equipped={equipped[item.slot] === item.id}
+                canAfford={user.sparksBalance >= item.price}
+                avatarUrl={user.avatarUrl}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
+
+      <section className="mt-7 pb-4">
+        <h2 className="font-display text-lg font-600">Sticker Packs</h2>
+        <p className="mt-1 text-xs text-muted">Use stickers in your DMs.</p>
+        <div className="mt-3 space-y-3">
+          {STICKER_PACKS.map((pack) => (
+            <StickerPackCard
+              key={pack.id}
+              pack={pack}
+              owned={pack.price === 0 || ownedSet.has(pack.id)}
+              canAfford={user.sparksBalance >= pack.price}
+            />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}

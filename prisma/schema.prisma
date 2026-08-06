@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  handle        String   @unique
+  email         String   @unique
+  passwordHash  String
+  bio           String   @default("")
+  avatarUrl     String   @default("")
+  sparksBalance Int      @default(0)
+  equippedFrame String   @default("")
+  equippedBadge String   @default("")
+  equippedTitle String   @default("")
+  equippedBg    String   @default("")
+  createdAt     DateTime @default(now())
+
+  posts          Post[]
+  stories        Story[]
+  likes          Like[]
+  views          View[]
+  transactions   Transaction[]
+  followers      Follow[]        @relation("Following")
+  following      Follow[]        @relation("Follower")
+  ownedCosmetics OwnedCosmetic[]
+  conversationsA Conversation[]  @relation("UserA")
+  conversationsB Conversation[]  @relation("UserB")
+  messages       Message[]
+}
+
+model Post {
+  id         String   @id @default(cuid())
+  authorId   String
+  type       String // TEXT | IMAGE | CLIP
+  body       String   @default("")
+  mediaUrl   String   @default("")
+  viewsCount Int      @default(0)
+  likesCount Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  author User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes  Like[]
+  views  View[]
+}
+
+model Story {
+  id        String   @id @default(cuid())
+  authorId  String
+  mediaUrl  String
+  caption   String   @default("")
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+}
+
+model View {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  userId    String
+  amount    Int
+  reason    String // VIEW_EARN | FOLLOW_EARN | SHOP_SPEND
+  meta      String   @default("")
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model OwnedCosmetic {
+  id        String   @id @default(cuid())
+  userId    String
+  itemId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemId])
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  userAId   String
+  userBId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userA    User      @relation("UserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB    User      @relation("UserB", fields: [userBId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@unique([userAId, userBId])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  kind           String   @default("TEXT") // TEXT | STICKER | IMAGE | VIDEO
+  body           String
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+}
