@@ -10,11 +10,12 @@ export default async function AppLayout({
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (user.banned) redirect("/login?banned=1");
 
   return (
     <div className="bg-atmosphere min-h-dvh">
       <div className="phone-shell pb-20">
-        <TopBar sparks={user.sparksBalance} />
+        <TopBar sparks={user.sparksBalance} isAdmin={user.isAdmin} />
         {children}
         <BottomNav />
       </div>

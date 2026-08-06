@@ -15,6 +15,7 @@ export async function requireUser() {
     where: { id: session.user.id },
   });
   if (!user) throw new Error("Unauthorized");
+  if (user.banned) throw new Error("Banned");
   return user;
 }
 

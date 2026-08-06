@@ -3,9 +3,11 @@ import Link from "next/link";
 export function TopBar({
   sparks,
   title = "Pulse",
+  isAdmin = false,
 }: {
   sparks: number;
   title?: string;
+  isAdmin?: boolean;
 }) {
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-ink/80 px-4 py-3 backdrop-blur-xl">
@@ -13,6 +15,14 @@ export function TopBar({
         {title}
       </Link>
       <div className="flex items-center gap-2">
+        {isAdmin ? (
+          <Link
+            href="/app/admin"
+            className="rounded-full border border-danger/40 px-2.5 py-1 text-xs font-semibold text-danger"
+          >
+            Admin
+          </Link>
+        ) : null}
         <Link
           href="/app/messages"
           aria-label="Messages"

@@ -11,6 +11,7 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const registered = params.get("registered");
+  const banned = params.get("banned");
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -43,6 +44,11 @@ function LoginForm() {
         {registered && (
           <p className="mt-4 rounded-xl border border-mint/30 bg-mint/10 px-3 py-2 text-sm text-mint">
             Account created — log in to continue.
+          </p>
+        )}
+        {banned && (
+          <p className="mt-4 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+            This account has been banned.
           </p>
         )}
 

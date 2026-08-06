@@ -20,6 +20,8 @@ model User {
   equippedBadge String   @default("")
   equippedTitle String   @default("")
   equippedBg    String   @default("")
+  isAdmin       Boolean  @default(false)
+  banned        Boolean  @default(false)
   createdAt     DateTime @default(now())
 
   posts          Post[]

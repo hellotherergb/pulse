@@ -21,7 +21,7 @@ export const authOptions: NextAuthOptions = {
         const user = await prisma.user.findUnique({
           where: { email: credentials.email.toLowerCase().trim() },
         });
-        if (!user) return null;
+        if (!user || user.banned) return null;
 
         const valid = await bcrypt.compare(
           credentials.password,
@@ -35,6 +35,7 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           handle: user.handle,
           image: user.avatarUrl || null,
+          isAdmin: user.isAdmin,
         };
       },
     }),
@@ -44,6 +45,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.handle = (user as { handle?: string }).handle;
+        token.isAdmin = Boolean((user as { isAdmin?: boolean }).isAdmin);
       }
       return token;
     },
@@ -51,6 +53,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.handle = token.handle as string;
+        session.user.isAdmin = Boolean(token.isAdmin);
       }
       return session;
     },

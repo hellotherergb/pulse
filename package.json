@@ -14,6 +14,7 @@
     "db:studio": "prisma studio",
     "check:cloud": "node scripts/check-cloud.mjs",
     "verify:neon": "tsx scripts/verify-neon.ts",
+    "ensure:admin": "tsx scripts/ensure-admin.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {
