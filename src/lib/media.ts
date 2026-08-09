@@ -15,7 +15,9 @@ export function isAllowedMediaUrl(url: string): boolean {
       u.hostname.endsWith("unsplash.com") ||
       u.hostname.endsWith("images.unsplash.com") ||
       u.hostname.endsWith("dicebear.com") ||
-      u.hostname.endsWith("api.dicebear.com")
+      u.hostname.endsWith("api.dicebear.com") ||
+      u.hostname === "image.pollinations.ai" ||
+      u.hostname.endsWith(".pollinations.ai")
     ) {
       return true;
     }

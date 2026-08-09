@@ -39,7 +39,9 @@ export default async function ConversationPage({
     }),
     prisma.ownedEmote.findMany({
       where: { userId: user.id },
-      include: { emote: { select: { glyph: true, name: true } } },
+      include: {
+        emote: { select: { glyph: true, name: true, imageUrl: true } },
+      },
     }),
   ]);
 
@@ -67,6 +69,7 @@ export default async function ConversationPage({
         ownedEmotes={ownedEmotes.map((o) => ({
           glyph: o.emote.glyph,
           name: o.emote.name,
+          imageUrl: o.emote.imageUrl,
         }))}
         initialMessages={convo.messages.map((m) => ({
           id: m.id,

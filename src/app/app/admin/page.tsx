@@ -3,6 +3,9 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { AdminForm } from "@/components/admin-form";
+
+/** Image generation from description can take a while. */
+export const maxDuration = 60;
 import {
   adminBanUserAction,
   adminRewardSparksAction,
@@ -14,6 +17,7 @@ import {
 } from "@/lib/admin-actions";
 import {
   adminCreateEmoteAction,
+  adminRegenEmoteImageAction,
   adminStartAuctionAction,
   adminEndAuctionAction,
   adminCancelAuctionAction,
@@ -107,29 +111,32 @@ export default async function AdminPage() {
           action={adminCreateEmoteAction}
           className="space-y-2 rounded-2xl border border-line bg-ink-2/70 p-3"
         >
-          <p className="text-xs text-muted">Create an emote, then start an auction for it.</p>
+          <p className="text-xs text-muted">
+            Write a short description — we generate a sticker image from it (may take ~10–20s).
+          </p>
           <input
             name="name"
             placeholder="Emote name"
             required
             className="w-full rounded-xl border border-line bg-ink px-3 py-2 text-sm text-warm"
           />
-          <input
-            name="glyph"
-            placeholder="Glyph (emoji e.g. 🔥 or :pulse:)"
+          <textarea
+            name="description"
+            placeholder="Short description e.g. chubby mint frog wearing sunglasses"
             required
+            rows={2}
             className="w-full rounded-xl border border-line bg-ink px-3 py-2 text-sm text-warm"
           />
           <input
-            name="description"
-            placeholder="Short description (optional)"
+            name="glyph"
+            placeholder="Fallback emoji (optional)"
             className="w-full rounded-xl border border-line bg-ink px-3 py-2 text-sm text-warm"
           />
           <button
             type="submit"
             className="rounded-lg border border-mint/40 bg-mint/10 px-3 py-1.5 text-xs font-semibold text-mint"
           >
-            Create emote
+            Generate image & create
           </button>
         </AdminForm>
 
@@ -147,7 +154,7 @@ export default async function AdminPage() {
               >
                 {emotes.map((e) => (
                   <option key={e.id} value={e.id}>
-                    {e.glyph} {e.name}
+                    {e.name}
                   </option>
                 ))}
               </select>
@@ -188,15 +195,34 @@ export default async function AdminPage() {
           {emotes.map((e) => (
             <li
               key={e.id}
-              className="flex items-center gap-2 rounded-xl border border-line bg-ink-2/50 px-3 py-2 text-sm"
+              className="flex items-center gap-3 rounded-xl border border-line bg-ink-2/50 px-3 py-2 text-sm"
             >
-              <span className="text-xl">{e.glyph}</span>
-              <span className="flex-1">
-                {e.name}{" "}
-                <span className="text-xs text-muted">
-                  · {e._count.owners} owners · {e._count.auctions} auctions
+              {e.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={e.imageUrl}
+                  alt={e.name}
+                  className="h-12 w-12 rounded-xl object-cover"
+                />
+              ) : (
+                <span className="text-xl">{e.glyph}</span>
+              )}
+              <span className="min-w-0 flex-1">
+                <span className="font-semibold">{e.name}</span>
+                <span className="block truncate text-xs text-muted">
+                  {e.description || "No description"} · {e._count.owners} owners ·{" "}
+                  {e._count.auctions} auctions
                 </span>
               </span>
+              <AdminForm action={adminRegenEmoteImageAction}>
+                <input type="hidden" name="emoteId" value={e.id} />
+                <button
+                  type="submit"
+                  className="rounded-lg border border-line px-2 py-1 text-[10px] text-muted hover:border-mint/40 hover:text-mint"
+                >
+                  Regen
+                </button>
+              </AdminForm>
             </li>
           ))}
         </ul>
@@ -206,9 +232,19 @@ export default async function AdminPage() {
             key={a.id}
             className="rounded-2xl border border-line bg-ink-2/70 p-3"
           >
-            <p className="font-semibold">
-              {a.emote.glyph} {a.emote.name}
-            </p>
+            <div className="flex items-center gap-2">
+              {a.emote.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={a.emote.imageUrl}
+                  alt=""
+                  className="h-10 w-10 rounded-lg object-cover"
+                />
+              ) : (
+                <span className="text-xl">{a.emote.glyph}</span>
+              )}
+              <p className="font-semibold">{a.emote.name}</p>
+            </div>
             <p className="text-xs text-muted">
               ✦{a.currentBid || a.startingBid}
               {a.currentBid === 0 ? " start" : ""} ·{" "}

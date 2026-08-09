@@ -75,7 +75,16 @@ export default async function AuctionPage() {
                 className="rounded-2xl border border-line bg-ink-2 px-3 py-2 text-center"
                 title={o.emote.name}
               >
-                <span className="text-2xl leading-none">{o.emote.glyph}</span>
+                {o.emote.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={o.emote.imageUrl}
+                    alt={o.emote.name}
+                    className="mx-auto h-12 w-12 rounded-xl object-cover"
+                  />
+                ) : (
+                  <span className="text-2xl leading-none">{o.emote.glyph}</span>
+                )}
                 <p className="mt-1 text-[10px] text-muted">{o.emote.name}</p>
               </li>
             ))}
@@ -98,8 +107,17 @@ export default async function AuctionPage() {
                 className="rounded-2xl border border-line bg-ink-2/80 p-4"
               >
                 <div className="flex gap-3">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-mint/30 bg-ink text-3xl">
-                    {a.emote.glyph}
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-mint/30 bg-ink text-3xl">
+                    {a.emote.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={a.emote.imageUrl}
+                        alt={a.emote.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      a.emote.glyph
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <h3 className="font-display text-lg font-semibold text-warm">
@@ -174,7 +192,16 @@ export default async function AuctionPage() {
               key={a.id}
               className="flex items-center gap-3 rounded-2xl border border-line bg-ink-2/50 px-3 py-2"
             >
-              <span className="text-2xl">{a.emote.glyph}</span>
+              {a.emote.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={a.emote.imageUrl}
+                  alt=""
+                  className="h-10 w-10 rounded-lg object-cover"
+                />
+              ) : (
+                <span className="text-2xl">{a.emote.glyph}</span>
+              )}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">{a.emote.name}</p>
                 <p className="text-xs text-muted">

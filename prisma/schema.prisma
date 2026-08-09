@@ -171,8 +171,9 @@ model Message {
 model CustomEmote {
   id          String   @id @default(cuid())
   name        String
-  glyph       String // emoji or short symbol shown in chat
+  glyph       String   @default("✨") // fallback emoji if no image
   description String   @default("")
+  imageUrl    String   @default("") // AI image generated from description
   createdById String
   createdAt   DateTime @default(now())
 

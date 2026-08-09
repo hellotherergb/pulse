@@ -75,24 +75,81 @@ export async function adminCreateEmoteAction(formData: FormData) {
   const parsed = z
     .object({
       name: z.string().trim().min(2).max(40),
-      glyph: z.string().trim().min(1).max(12),
-      description: z.string().trim().max(200).optional(),
+      glyph: z.string().trim().max(12).optional(),
+      description: z.string().trim().min(3).max(200),
     })
     .safeParse({
       name: formData.get("name"),
-      glyph: formData.get("glyph"),
+      glyph: formData.get("glyph") || "",
       description: formData.get("description") || "",
     });
-  if (!parsed.success) return { error: "Invalid emote (name 2–40, glyph required)" };
+  if (!parsed.success) {
+    return {
+      error: "Need a name and short description (used to generate the image)",
+    };
+  }
+
+  let imageUrl = "";
+  try {
+    const { generateEmoteImage } = await import("@/lib/generate-emote-image");
+    imageUrl = await generateEmoteImage({
+      name: parsed.data.name,
+      description: parsed.data.description,
+      adminId: admin.id,
+    });
+  } catch (e) {
+    return {
+      error:
+        e instanceof Error
+          ? `Image generation failed: ${e.message}`
+          : "Image generation failed",
+    };
+  }
 
   await prisma.customEmote.create({
     data: {
       name: parsed.data.name,
-      glyph: parsed.data.glyph,
-      description: parsed.data.description || "",
+      glyph: parsed.data.glyph || "✨",
+      description: parsed.data.description,
+      imageUrl,
       createdById: admin.id,
     },
   });
+  revalidateAuction();
+  return { ok: true as const };
+}
+
+export async function adminRegenEmoteImageAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const emoteId = String(formData.get("emoteId") || "");
+  if (!emoteId) return { error: "Missing emote" };
+
+  const emote = await prisma.customEmote.findUnique({ where: { id: emoteId } });
+  if (!emote) return { error: "Emote not found" };
+  if (!emote.description.trim()) {
+    return { error: "Add a description before regenerating" };
+  }
+
+  try {
+    const { generateEmoteImage } = await import("@/lib/generate-emote-image");
+    const imageUrl = await generateEmoteImage({
+      name: emote.name,
+      description: emote.description,
+      adminId: admin.id,
+    });
+    await prisma.customEmote.update({
+      where: { id: emoteId },
+      data: { imageUrl },
+    });
+  } catch (e) {
+    return {
+      error:
+        e instanceof Error
+          ? `Image generation failed: ${e.message}`
+          : "Image generation failed",
+    };
+  }
+
   revalidateAuction();
   return { ok: true as const };
 }

@@ -23,7 +23,7 @@ export function ChatThread({
   conversationId: string;
   myId: string;
   ownedPackIds: string[];
-  ownedEmotes?: { glyph: string; name: string }[];
+  ownedEmotes?: { glyph: string; name: string; imageUrl?: string }[];
   initialMessages: Msg[];
 }) {
   const router = useRouter();
@@ -132,16 +132,28 @@ export function ChatThread({
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
                 Auction emotes
               </p>
-              <div className="grid grid-cols-8 gap-1">
+              <div className="grid grid-cols-4 gap-2">
                 {ownedEmotes.map((e) => (
                   <button
-                    key={`${e.name}-${e.glyph}`}
+                    key={`${e.name}-${e.glyph}-${e.imageUrl || ""}`}
                     type="button"
                     title={e.name}
-                    onClick={() => sendSticker(e.glyph)}
-                    className="rounded-lg py-1 text-2xl transition hover:bg-ink-3"
+                    onClick={() => sendSticker(e.imageUrl || e.glyph)}
+                    className="flex flex-col items-center rounded-lg p-1 transition hover:bg-ink-3"
                   >
-                    {e.glyph}
+                    {e.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={e.imageUrl}
+                        alt={e.name}
+                        className="h-12 w-12 rounded-lg object-cover"
+                      />
+                    ) : (
+                      <span className="text-2xl">{e.glyph}</span>
+                    )}
+                    <span className="mt-0.5 max-w-full truncate text-[9px] text-muted">
+                      {e.name}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -232,6 +244,20 @@ export function ChatThread({
 
 function MessageBubble({ msg, mine }: { msg: Msg; mine: boolean }) {
   if (msg.kind === "STICKER") {
+    const isImage =
+      msg.body.startsWith("https://") ||
+      msg.body.startsWith("/uploads/") ||
+      msg.body.startsWith("/media/");
+    if (isImage) {
+      return (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={msg.body}
+          alt=""
+          className="animate-sticker-pop h-28 w-28 rounded-2xl object-cover drop-shadow-[0_4px_12px_rgba(0,0,0,0.4)]"
+        />
+      );
+    }
     return (
       <span className="animate-sticker-pop text-6xl leading-none drop-shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
         {msg.body}

@@ -53,7 +53,10 @@ export async function sendMessageAction(
       }
     } else {
       const ownedEmote = await prisma.ownedEmote.findFirst({
-        where: { userId: user.id, emote: { glyph: text } },
+        where: {
+          userId: user.id,
+          OR: [{ emote: { glyph: text } }, { emote: { imageUrl: text } }],
+        },
       });
       if (!ownedEmote) return { error: "Unknown sticker" };
     }
