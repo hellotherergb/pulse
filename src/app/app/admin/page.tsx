@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { AdminForm } from "@/components/admin-form";
+import { EmotePixelEditor } from "@/components/emote-pixel-editor";
 
 /** Image generation from description can take a while. */
 export const maxDuration = 60;
@@ -107,6 +108,9 @@ export default async function AdminPage() {
 
       <section className="space-y-3">
         <h2 className="font-display text-lg font-semibold">Custom emotes & auctions</h2>
+
+        <EmotePixelEditor />
+
         <AdminForm
           action={adminCreateEmoteAction}
           className="space-y-2 rounded-2xl border border-line bg-ink-2/70 p-3"

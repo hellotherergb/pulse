@@ -109,7 +109,7 @@ function extractSignLabel(description: string, name: string): string {
   return (word || name || "OG").slice(0, 8).toUpperCase();
 }
 
-async function storeImage(
+export async function storeEmoteImage(
   bytes: Buffer,
   contentType: string,
   ext: string,
@@ -130,4 +130,13 @@ async function storeImage(
 
   // Persist without Blob: data URL works in <img> and DM stickers
   return `data:${contentType};base64,${bytes.toString("base64")}`;
+}
+
+async function storeImage(
+  bytes: Buffer,
+  contentType: string,
+  ext: string,
+  adminId: string,
+): Promise<string> {
+  return storeEmoteImage(bytes, contentType, ext, adminId);
 }

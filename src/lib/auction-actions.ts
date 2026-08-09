@@ -119,6 +119,62 @@ export async function adminCreateEmoteAction(formData: FormData) {
   return { ok: true as const };
 }
 
+export async function adminCreateManualEmoteAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const parsed = z
+    .object({
+      name: z.string().trim().min(2).max(40),
+      description: z.string().trim().max(200).optional(),
+      imageDataUrl: z.string().min(32).max(900_000),
+    })
+    .safeParse({
+      name: formData.get("name"),
+      description: formData.get("description") || "",
+      imageDataUrl: formData.get("imageDataUrl") || "",
+    });
+  if (!parsed.success) {
+    return { error: "Need a name and a painted image" };
+  }
+
+  const match = parsed.data.imageDataUrl.match(
+    /^data:(image\/png|image\/jpeg|image\/webp);base64,([A-Za-z0-9+/=]+)$/,
+  );
+  if (!match) return { error: "Invalid image data" };
+
+  const contentType = match[1];
+  const bytes = Buffer.from(match[2], "base64");
+  if (bytes.length < 80 || bytes.length > 650_000) {
+    return { error: "Image too small or too large" };
+  }
+
+  const ext =
+    contentType === "image/png"
+      ? ".png"
+      : contentType === "image/webp"
+        ? ".webp"
+        : ".jpg";
+
+  const { storeEmoteImage } = await import("@/lib/generate-emote-image");
+  const imageUrl = await storeEmoteImage(
+    bytes,
+    contentType,
+    ext,
+    admin.id,
+  );
+
+  await prisma.customEmote.create({
+    data: {
+      name: parsed.data.name,
+      glyph: "✨",
+      description: parsed.data.description || "Manual pixel emote",
+      imageUrl,
+      createdById: admin.id,
+    },
+  });
+  revalidateAuction();
+  return { ok: true as const };
+}
+
 export async function adminRegenEmoteImageAction(formData: FormData) {
   const admin = await requireAdmin();
   const emoteId = String(formData.get("emoteId") || "");
