@@ -62,8 +62,20 @@ export async function POST(req: Request) {
       access: "public",
       token: process.env.BLOB_READ_WRITE_TOKEN,
       contentType: file.type,
+      addRandomSuffix: true,
     });
     return NextResponse.json({ url: blob.url, kind });
+  }
+
+  // On Vercel without Blob, local disk uploads disappear — don't fake success.
+  if (process.env.VERCEL) {
+    return NextResponse.json(
+      {
+        error:
+          "Media storage is not configured (BLOB_READ_WRITE_TOKEN). Avatar upload will use a compressed fallback.",
+      },
+      { status: 503 },
+    );
   }
 
   // Local fallback for offline development without Blob.

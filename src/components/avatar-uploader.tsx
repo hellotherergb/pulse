@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateAvatarAction } from "@/lib/actions";
+import { blobToDataUrl, compressImageFile } from "@/lib/compress-image";
 import { Avatar } from "./avatar";
 
 export function AvatarUploader({
@@ -16,47 +17,60 @@ export function AvatarUploader({
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Local preview so the PFP doesn't flash/blank while the server catches up
   const [preview, setPreview] = useState<string | null>(null);
 
   async function onFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setError("Pick an image file");
+    if (!file.type.startsWith("image/") && !/\.heic$/i.test(file.name)) {
+      setError("Pick an image file (jpg, png, webp)");
       return;
     }
     setBusy(true);
     setError(null);
 
-    const localUrl = URL.createObjectURL(file);
-    setPreview(localUrl);
-
+    let localUrl = "";
     try {
+      // Always compress — HEIC/huge phone photos often break uploads on Vercel.
+      const compressed = await compressImageFile(file, {
+        maxSize: 512,
+        quality: 0.85,
+      });
+      localUrl = URL.createObjectURL(compressed);
+      setPreview(localUrl);
+
+      const uploadFile = new File([compressed], "avatar.jpg", {
+        type: "image/jpeg",
+      });
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", uploadFile);
       const res = await fetch("/api/upload", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Upload failed");
-        setPreview(null);
-        return;
+      const data = (await res.json().catch(() => ({}))) as {
+        url?: string;
+        error?: string;
+      };
+
+      let finalUrl = data.url;
+      if (!res.ok || !finalUrl) {
+        // Fallback: store compressed JPEG in the profile row (works without Blob).
+        finalUrl = await blobToDataUrl(compressed);
       }
-      const result = await updateAvatarAction(data.url);
+
+      const result = await updateAvatarAction(finalUrl);
       if (result?.error) {
         setError(result.error);
         setPreview(null);
         return;
       }
-      setPreview(data.url);
+      setPreview(finalUrl);
       router.refresh();
     } catch {
-      setError("Upload failed");
+      setError("Couldn’t process that photo. Try a jpg or png.");
       setPreview(null);
     } finally {
       setBusy(false);
-      URL.revokeObjectURL(localUrl);
+      if (localUrl) URL.revokeObjectURL(localUrl);
     }
   }
 
@@ -65,7 +79,7 @@ export function AvatarUploader({
       <input
         ref={fileRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/gif"
         className="hidden"
         onChange={onFileChosen}
       />
@@ -89,7 +103,9 @@ export function AvatarUploader({
         </span>
       </button>
       <p className="text-[10px] text-muted">Tap to change photo</p>
-      {error && <p className="max-w-[9rem] text-center text-[10px] text-danger">{error}</p>}
+      {error && (
+        <p className="max-w-[9rem] text-center text-[10px] text-danger">{error}</p>
+      )}
     </div>
   );
 }

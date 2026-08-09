@@ -1,5 +1,16 @@
-import type { CSSProperties } from "react";
+"use client";
+
+import { useEffect, useState, type CSSProperties } from "react";
 import { getCosmetic } from "@/lib/cosmetics";
+
+const FALLBACK = "/avatars/a1.svg";
+
+function safeSrc(src: string) {
+  if (!src || src === "null" || src === "undefined") return FALLBACK;
+  // Leftover local upload paths from before Blob — broken on Vercel
+  if (src.startsWith("/uploads/")) return FALLBACK;
+  return src;
+}
 
 export function Avatar({
   src,
@@ -10,18 +21,24 @@ export function Avatar({
   frameId?: string;
   size?: number;
 }) {
+  const [broken, setBroken] = useState(false);
+  useEffect(() => {
+    setBroken(false);
+  }, [src]);
   const frame = frameId ? getCosmetic(frameId) : undefined;
   const ring = frame ? 3 : 0;
   const inner = size - ring * 2;
   const emojiSize = Math.max(11, Math.round(size * 0.34));
+  const imgSrc = broken ? FALLBACK : safeSrc(src);
 
   if (!frame) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={src}
+        src={imgSrc}
         alt=""
         draggable={false}
+        onError={() => setBroken(true)}
         className="shrink-0 rounded-full bg-ink-3 object-cover"
         style={{
           width: size,
@@ -46,7 +63,6 @@ export function Avatar({
 
   // Full gradient disk sits BEHIND the photo (z-index 0). Photo is relative
   // with z-index 1 so transform animations on the ring can never cover it.
-  // The 3px margin around the photo is what looks like the frame.
   const ringStyle: CSSProperties = {
     position: "absolute",
     inset: 0,
@@ -67,9 +83,10 @@ export function Avatar({
       />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={src}
+        src={imgSrc}
         alt=""
         draggable={false}
+        onError={() => setBroken(true)}
         className="rounded-full bg-ink-3 object-cover"
         style={{
           position: "relative",
@@ -81,7 +98,6 @@ export function Avatar({
           maxHeight: "none",
           margin: ring,
           objectFit: "cover",
-          // Keeps a hard edge so the spinning ring never bleeds into the face
           boxShadow: "0 0 0 1px #0b0f14",
         }}
       />
