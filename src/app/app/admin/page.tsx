@@ -12,6 +12,13 @@ import {
   adminDeleteMessageAction,
   adminDeleteConversationAction,
 } from "@/lib/admin-actions";
+import {
+  adminCreateEmoteAction,
+  adminStartAuctionAction,
+  adminEndAuctionAction,
+  adminCancelAuctionAction,
+  settleExpiredAuctions,
+} from "@/lib/auction-actions";
 
 export default async function AdminPage() {
   const me = await getCurrentUser();
@@ -19,7 +26,9 @@ export default async function AdminPage() {
   if (me.banned) redirect("/login");
   if (!me.isAdmin) redirect("/app");
 
-  const [users, posts, conversations] = await Promise.all([
+  await settleExpiredAuctions();
+
+  const [users, posts, conversations, emotes, openAuctions] = await Promise.all([
     prisma.user.findMany({
       orderBy: { createdAt: "desc" },
       take: 80,
@@ -56,6 +65,22 @@ export default async function AdminPage() {
         _count: { select: { messages: true } },
       },
     }),
+    prisma.customEmote.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      include: {
+        _count: { select: { owners: true, auctions: true } },
+      },
+    }),
+    prisma.auction.findMany({
+      where: { status: "OPEN" },
+      orderBy: { endsAt: "asc" },
+      include: {
+        emote: true,
+        currentBidder: { select: { handle: true } },
+        _count: { select: { bids: true } },
+      },
+    }),
   ]);
 
   return (
@@ -64,12 +89,158 @@ export default async function AdminPage() {
         <p className="text-xs uppercase tracking-[0.2em] text-mint">Admin</p>
         <h1 className="font-display text-2xl font-bold text-warm">Moderation</h1>
         <p className="mt-1 text-sm text-muted">
-          Ban users, gift Sparks, edit/delete posts and chats.
+          Ban users, gift Sparks, run emote auctions, edit/delete posts and chats.
         </p>
-        <Link href="/app" className="mt-2 inline-block text-sm text-mint hover:underline">
-          ← Back to app
-        </Link>
+        <div className="mt-2 flex flex-wrap gap-3 text-sm">
+          <Link href="/app" className="text-mint hover:underline">
+            ← Back to app
+          </Link>
+          <Link href="/app/auction" className="text-mint hover:underline">
+            Auction house →
+          </Link>
+        </div>
       </div>
+
+      <section className="space-y-3">
+        <h2 className="font-display text-lg font-semibold">Custom emotes & auctions</h2>
+        <AdminForm
+          action={adminCreateEmoteAction}
+          className="space-y-2 rounded-2xl border border-line bg-ink-2/70 p-3"
+        >
+          <p className="text-xs text-muted">Create an emote, then start an auction for it.</p>
+          <input
+            name="name"
+            placeholder="Emote name"
+            required
+            className="w-full rounded-xl border border-line bg-ink px-3 py-2 text-sm text-warm"
+          />
+          <input
+            name="glyph"
+            placeholder="Glyph (emoji e.g. 🔥 or :pulse:)"
+            required
+            className="w-full rounded-xl border border-line bg-ink px-3 py-2 text-sm text-warm"
+          />
+          <input
+            name="description"
+            placeholder="Short description (optional)"
+            className="w-full rounded-xl border border-line bg-ink px-3 py-2 text-sm text-warm"
+          />
+          <button
+            type="submit"
+            className="rounded-lg border border-mint/40 bg-mint/10 px-3 py-1.5 text-xs font-semibold text-mint"
+          >
+            Create emote
+          </button>
+        </AdminForm>
+
+        {emotes.length > 0 ? (
+          <AdminForm
+            action={adminStartAuctionAction}
+            className="space-y-2 rounded-2xl border border-line bg-ink-2/70 p-3"
+          >
+            <label className="block text-xs text-muted">
+              Emote
+              <select
+                name="emoteId"
+                required
+                className="mt-1 w-full rounded-xl border border-line bg-ink px-3 py-2 text-sm text-warm"
+              >
+                {emotes.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.glyph} {e.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <label className="text-xs text-muted">
+                Starting bid
+                <input
+                  name="startingBid"
+                  type="number"
+                  min={1}
+                  defaultValue={50}
+                  className="mt-1 block w-28 rounded-lg border border-line bg-ink px-2 py-1.5 text-sm text-warm"
+                />
+              </label>
+              <label className="text-xs text-muted">
+                Hours
+                <input
+                  name="hours"
+                  type="number"
+                  min={1}
+                  max={168}
+                  defaultValue={24}
+                  className="mt-1 block w-20 rounded-lg border border-line bg-ink px-2 py-1.5 text-sm text-warm"
+                />
+              </label>
+            </div>
+            <button
+              type="submit"
+              className="rounded-lg bg-mint px-3 py-1.5 text-xs font-semibold text-ink"
+            >
+              Start auction
+            </button>
+          </AdminForm>
+        ) : null}
+
+        <ul className="space-y-2">
+          {emotes.map((e) => (
+            <li
+              key={e.id}
+              className="flex items-center gap-2 rounded-xl border border-line bg-ink-2/50 px-3 py-2 text-sm"
+            >
+              <span className="text-xl">{e.glyph}</span>
+              <span className="flex-1">
+                {e.name}{" "}
+                <span className="text-xs text-muted">
+                  · {e._count.owners} owners · {e._count.auctions} auctions
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
+
+        {openAuctions.map((a) => (
+          <article
+            key={a.id}
+            className="rounded-2xl border border-line bg-ink-2/70 p-3"
+          >
+            <p className="font-semibold">
+              {a.emote.glyph} {a.emote.name}
+            </p>
+            <p className="text-xs text-muted">
+              ✦{a.currentBid || a.startingBid}
+              {a.currentBid === 0 ? " start" : ""} ·{" "}
+              {a.currentBidder ? `@${a.currentBidder.handle}` : "no bids"} ·{" "}
+              {a._count.bids} bids · ends {a.endsAt.toLocaleString()}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <AdminForm action={adminEndAuctionAction}>
+                <input type="hidden" name="auctionId" value={a.id} />
+                <button
+                  type="submit"
+                  className="rounded-lg border border-mint/40 px-3 py-1.5 text-xs font-semibold text-mint"
+                >
+                  End now (award winner)
+                </button>
+              </AdminForm>
+              <AdminForm
+                action={adminCancelAuctionAction}
+                confirmText="Cancel auction and refund the leading bidder?"
+              >
+                <input type="hidden" name="auctionId" value={a.id} />
+                <button
+                  type="submit"
+                  className="rounded-lg border border-danger/40 px-3 py-1.5 text-xs font-semibold text-danger"
+                >
+                  Cancel & refund
+                </button>
+              </AdminForm>
+            </div>
+          </article>
+        ))}
+      </section>
 
       <section className="space-y-3">
         <h2 className="font-display text-lg font-semibold">Users</h2>

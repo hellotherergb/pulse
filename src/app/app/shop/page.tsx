@@ -40,8 +40,21 @@ export default async function ShopPage() {
       </div>
 
       <Link
-        href="/app/map"
+        href="/app/auction"
         className="mt-5 flex items-center justify-between rounded-2xl border border-mint/25 bg-gradient-to-r from-mint/15 to-transparent px-4 py-3 transition hover:border-mint/45"
+      >
+        <div>
+          <p className="font-display text-base font-600">Auction House</p>
+          <p className="text-xs text-muted">
+            Bid Sparks on exclusive admin-made emotes.
+          </p>
+        </div>
+        <span className="text-mint">→</span>
+      </Link>
+
+      <Link
+        href="/app/map"
+        className="mt-3 flex items-center justify-between rounded-2xl border border-line bg-ink-2/60 px-4 py-3 transition hover:border-mint/35"
       >
         <div>
           <p className="font-display text-base font-600">Pixel Map</p>

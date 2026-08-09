@@ -40,12 +40,22 @@ export async function sendMessageAction(
   if (kind === "STICKER") {
     const { packOfSticker, getStickerPack } = await import("@/lib/stickers");
     const pack = packOfSticker(text);
-    if (!pack) return { error: "Unknown sticker" };
-    if (pack.price > 0) {
-      const owned = await prisma.ownedCosmetic.findUnique({
-        where: { userId_itemId: { userId: user.id, itemId: pack.id } },
+    if (pack) {
+      if (pack.price > 0) {
+        const owned = await prisma.ownedCosmetic.findUnique({
+          where: { userId_itemId: { userId: user.id, itemId: pack.id } },
+        });
+        if (!owned) {
+          return {
+            error: `You don't own the ${getStickerPack(pack.id)?.name} pack`,
+          };
+        }
+      }
+    } else {
+      const ownedEmote = await prisma.ownedEmote.findFirst({
+        where: { userId: user.id, emote: { glyph: text } },
       });
-      if (!owned) return { error: `You don't own the ${getStickerPack(pack.id)?.name} pack` };
+      if (!ownedEmote) return { error: "Unknown sticker" };
     }
   }
 

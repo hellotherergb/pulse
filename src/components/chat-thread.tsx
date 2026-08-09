@@ -17,11 +17,13 @@ export function ChatThread({
   conversationId,
   myId,
   ownedPackIds,
+  ownedEmotes = [],
   initialMessages,
 }: {
   conversationId: string;
   myId: string;
   ownedPackIds: string[];
+  ownedEmotes?: { glyph: string; name: string }[];
   initialMessages: Msg[];
 }) {
   const router = useRouter();
@@ -125,6 +127,26 @@ export function ChatThread({
 
       {showStickers && (
         <div className="max-h-56 overflow-y-auto border-t border-line bg-ink-2 px-4 py-3">
+          {ownedEmotes.length > 0 ? (
+            <div className="mb-3">
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
+                Auction emotes
+              </p>
+              <div className="grid grid-cols-8 gap-1">
+                {ownedEmotes.map((e) => (
+                  <button
+                    key={`${e.name}-${e.glyph}`}
+                    type="button"
+                    title={e.name}
+                    onClick={() => sendSticker(e.glyph)}
+                    className="rounded-lg py-1 text-2xl transition hover:bg-ink-3"
+                  >
+                    {e.glyph}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           {myPacks.map((pack) => (
             <div key={pack.id} className="mb-3">
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
@@ -145,7 +167,7 @@ export function ChatThread({
             </div>
           ))}
           <p className="text-[10px] text-muted">
-            Want more? Buy packs in the Shop.
+            Want more? Shop packs or win auctions.
           </p>
         </div>
       )}

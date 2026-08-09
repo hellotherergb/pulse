@@ -32,10 +32,16 @@ export default async function ConversationPage({
 
   const other = convo.userAId === user.id ? convo.userB : convo.userA;
 
-  const ownedPacks = await prisma.ownedCosmetic.findMany({
-    where: { userId: user.id, itemId: { startsWith: "pack_" } },
-    select: { itemId: true },
-  });
+  const [ownedPacks, ownedEmotes] = await Promise.all([
+    prisma.ownedCosmetic.findMany({
+      where: { userId: user.id, itemId: { startsWith: "pack_" } },
+      select: { itemId: true },
+    }),
+    prisma.ownedEmote.findMany({
+      where: { userId: user.id },
+      include: { emote: { select: { glyph: true, name: true } } },
+    }),
+  ]);
 
   return (
     <div className="flex h-[calc(100dvh-8.5rem)] flex-col">
@@ -58,6 +64,10 @@ export default async function ConversationPage({
         conversationId={convo.id}
         myId={user.id}
         ownedPackIds={ownedPacks.map((p) => p.itemId)}
+        ownedEmotes={ownedEmotes.map((o) => ({
+          glyph: o.emote.glyph,
+          name: o.emote.name,
+        }))}
         initialMessages={convo.messages.map((m) => ({
           id: m.id,
           senderId: m.senderId,
