@@ -246,6 +246,7 @@ function MessageBubble({ msg, mine }: { msg: Msg; mine: boolean }) {
   if (msg.kind === "STICKER") {
     const isImage =
       msg.body.startsWith("https://") ||
+      msg.body.startsWith("data:image/") ||
       msg.body.startsWith("/uploads/") ||
       msg.body.startsWith("/media/");
     if (isImage) {

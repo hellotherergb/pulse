@@ -112,8 +112,8 @@ export default async function AdminPage() {
           className="space-y-2 rounded-2xl border border-line bg-ink-2/70 p-3"
         >
           <p className="text-xs text-muted">
-            Describe exactly what you want (e.g. “pixelated green OG sign”). Generation may take
-            ~10–20s. Use Regen if the first image misses.
+            Pixel/sign requests (e.g. “pixelated green OG sign”) render real pixel letters — not AI.
+            Other descriptions use Flux (~10–20s). Hit Regen to retry.
           </p>
           <input
             name="name"
