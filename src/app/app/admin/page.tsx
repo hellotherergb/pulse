@@ -112,7 +112,8 @@ export default async function AdminPage() {
           className="space-y-2 rounded-2xl border border-line bg-ink-2/70 p-3"
         >
           <p className="text-xs text-muted">
-            Write a short description — we generate a sticker image from it (may take ~10–20s).
+            Describe exactly what you want (e.g. “pixelated green OG sign”). Generation may take
+            ~10–20s. Use Regen if the first image misses.
           </p>
           <input
             name="name"

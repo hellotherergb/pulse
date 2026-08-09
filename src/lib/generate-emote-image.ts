@@ -4,27 +4,38 @@ import crypto from "crypto";
 /**
  * Generate a sticker-style image from a short description.
  * Uses Pollinations (no API key). Prefers Vercel Blob storage when configured.
+ *
+ * Prompt order matters: description first so the model doesn't invent a mascot.
  */
 export async function generateEmoteImage(opts: {
   name: string;
   description: string;
   adminId: string;
 }): Promise<string> {
+  const subject = (opts.description.trim() || opts.name).replace(/\s+/g, " ");
+  const title = opts.name.trim();
+
+  // Lead with the user's words. Avoid "cute cat mascot" style defaults that
+  // override requests like "pixelated OG sign".
   const prompt = [
-    "cute expressive chat sticker emoji mascot,",
-    opts.description.trim() || opts.name,
-    `named ${opts.name},`,
-    "simple bold shapes, clean transparent-looking background,",
-    "centered single character, high contrast, sticker style, no text",
-  ].join(" ");
+    `Create exactly this: ${subject}.`,
+    title && title.toLowerCase() !== subject.toLowerCase()
+      ? `Title/context: ${title}.`
+      : "",
+    "Follow the description literally — do not replace it with a cat, animal, or random mascot.",
+    "If the description asks for text/letters/sign/logo, show that clearly.",
+    "If it asks for pixel art / pixelated, use chunky visible pixels.",
+    "Square chat sticker composition, centered subject, plain simple background, no watermark, no extra characters.",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(
     prompt,
-  )}?width=512&height=512&nologo=true&enhance=true&seed=${Date.now() % 100000}`;
+  )}?width=512&height=512&nologo=true&enhance=false&seed=${Date.now() % 1_000_000}`;
 
   const res = await fetch(pollinationsUrl, {
     headers: { Accept: "image/*" },
-    // Serverless-friendly timeout budget
     signal: AbortSignal.timeout(55_000),
   });
   if (!res.ok) {
@@ -56,6 +67,5 @@ export async function generateEmoteImage(opts: {
     return blob.url;
   }
 
-  // Fallback: durable remote URL (works without Blob)
   return pollinationsUrl;
 }
