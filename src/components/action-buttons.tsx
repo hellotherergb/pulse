@@ -1,7 +1,12 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { toggleLikeAction, toggleFollowAction } from "@/lib/actions";
+import {
+  toggleLikeAction,
+  toggleFollowAction,
+  deleteOwnPostAction,
+} from "@/lib/actions";
 
 export function LikeButton({
   postId,
@@ -62,6 +67,38 @@ export function FollowButton({
       }
     >
       {following ? "Following" : "Follow"}
+    </button>
+  );
+}
+
+export function DeletePostButton({
+  postId,
+  variant = "feed",
+}: {
+  postId: string;
+  variant?: "feed" | "clip";
+}) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() => {
+        if (!window.confirm("Delete this post permanently?")) return;
+        start(async () => {
+          const res = await deleteOwnPostAction(postId);
+          if (!res?.error) router.refresh();
+        });
+      }}
+      className={
+        variant === "clip"
+          ? "rounded-full border border-white/30 bg-black/40 px-3 py-1.5 text-xs font-semibold text-white/90 backdrop-blur disabled:opacity-50"
+          : "text-xs font-semibold text-danger/80 transition hover:text-danger disabled:opacity-50"
+      }
+    >
+      {pending ? "Deleting…" : "Delete"}
     </button>
   );
 }

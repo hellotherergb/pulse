@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pulse — Full Feature Presentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #0b0f14;
+        --ink-2: #121821;
+        --ink-3: #1a2330;
+        --mint: #3dffb0;
+        --mint-dim: #2bc98a;
+        --warm: #f4f1ec;
+        --muted: #8b97a8;
+        --line: rgba(244, 241, 236, 0.1);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
+        height: 100%;
+        background: var(--ink);
+        color: var(--warm);
+        font-family: Outfit, sans-serif;
+        overflow: hidden;
+      }
+
+      .deck {
+        position: relative;
+        height: 100%;
+        width: 100%;
+      }
+
+      .slide {
+        position: absolute;
+        inset: 0;
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        padding: clamp(1.5rem, 5vw, 4.5rem);
+        padding-bottom: 4.5rem;
+        opacity: 0;
+        transform: translateY(16px);
+        transition:
+          opacity 0.4s ease,
+          transform 0.4s ease;
+        overflow: auto;
+      }
+
+      .slide.active {
+        display: flex;
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .slide::before {
+        content: "";
+        position: absolute;
+        right: -8vw;
+        top: 10vh;
+        width: 40vw;
+        height: 40vw;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          rgba(61, 255, 176, 0.12),
+          transparent 68%
+        );
+        pointer-events: none;
+        animation: drift 14s ease-in-out infinite;
+      }
+
+      .slide::after {
+        content: "";
+        position: absolute;
+        left: -10vw;
+        bottom: 6vh;
+        width: 34vw;
+        height: 34vw;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          rgba(61, 180, 255, 0.09),
+          transparent 70%
+        );
+        pointer-events: none;
+        animation: drift 18s ease-in-out infinite reverse;
+      }
+
+      @keyframes drift {
+        0%,
+        100% {
+          transform: translate(0, 0);
+        }
+        50% {
+          transform: translate(2vw, -1.5vh);
+        }
+      }
+
+      .content {
+        position: relative;
+        z-index: 1;
+        max-width: 62rem;
+        width: 100%;
+      }
+
+      .brand {
+        font-family: Syne, sans-serif;
+        font-weight: 800;
+        font-size: clamp(4rem, 13vw, 8rem);
+        line-height: 0.9;
+        letter-spacing: -0.04em;
+      }
+
+      .brand span {
+        color: var(--mint);
+      }
+
+      .eyebrow {
+        display: inline-block;
+        margin-bottom: 1rem;
+        color: var(--mint);
+        font-size: 0.8rem;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        font-family: Syne, sans-serif;
+        font-weight: 800;
+        font-size: clamp(2.1rem, 5.5vw, 3.8rem);
+        line-height: 1.05;
+        letter-spacing: -0.03em;
+        max-width: 18ch;
+      }
+
+      h2 {
+        font-family: Syne, sans-serif;
+        font-weight: 700;
+        font-size: clamp(1.55rem, 3.8vw, 2.6rem);
+        line-height: 1.12;
+        letter-spacing: -0.02em;
+        margin-bottom: 0.75rem;
+      }
+
+      .lede {
+        margin-top: 1.1rem;
+        max-width: 38rem;
+        color: var(--muted);
+        font-size: clamp(0.98rem, 1.8vw, 1.2rem);
+        line-height: 1.45;
+      }
+
+      .grid {
+        display: grid;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+      }
+
+      .grid.two {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid.three {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .grid.four {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      @media (max-width: 900px) {
+        .grid.three,
+        .grid.four {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 560px) {
+        .grid.two,
+        .grid.three,
+        .grid.four {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .tile {
+        border: 1px solid var(--line);
+        background: var(--ink-2);
+        border-radius: 1.1rem;
+        padding: 1rem 1.15rem;
+        animation: rise 0.5s ease both;
+      }
+
+      .tile:nth-child(2) {
+        animation-delay: 0.05s;
+      }
+      .tile:nth-child(3) {
+        animation-delay: 0.1s;
+      }
+      .tile:nth-child(4) {
+        animation-delay: 0.15s;
+      }
+      .tile:nth-child(5) {
+        animation-delay: 0.2s;
+      }
+      .tile:nth-child(6) {
+        animation-delay: 0.25s;
+      }
+
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .tile strong {
+        display: block;
+        font-family: Syne, sans-serif;
+        font-size: 1.02rem;
+        font-weight: 700;
+        margin-bottom: 0.3rem;
+      }
+
+      .tile p,
+      .tile li {
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.4;
+      }
+
+      .tile ul {
+        margin-top: 0.35rem;
+        padding-left: 1rem;
+      }
+
+      .mint {
+        color: var(--mint);
+      }
+
+      .stat-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2rem;
+        margin-top: 1.75rem;
+      }
+
+      .stat .num {
+        font-family: Syne, sans-serif;
+        font-size: clamp(2.2rem, 5vw, 3.6rem);
+        font-weight: 800;
+        color: var(--mint);
+        line-height: 1;
+      }
+
+      .stat .label {
+        margin-top: 0.3rem;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .list {
+        list-style: none;
+        margin-top: 1.4rem;
+        display: grid;
+        gap: 0.7rem;
+      }
+
+      .list li {
+        display: flex;
+        align-items: baseline;
+        gap: 0.75rem;
+        font-size: 1.05rem;
+        line-height: 1.35;
+      }
+
+      .list li::before {
+        content: "";
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 50%;
+        background: var(--mint);
+        flex-shrink: 0;
+        transform: translateY(-0.1rem);
+      }
+
+      .list span {
+        color: var(--muted);
+      }
+
+      .table {
+        width: 100%;
+        margin-top: 1.25rem;
+        border-collapse: collapse;
+        font-size: 0.92rem;
+      }
+
+      .table th,
+      .table td {
+        text-align: left;
+        padding: 0.55rem 0.65rem;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .table th {
+        color: var(--mint);
+        font-weight: 600;
+        font-size: 0.78rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .table td:last-child,
+      .table th:last-child {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        color: var(--mint);
+        font-weight: 600;
+      }
+
+      .table td:last-child {
+        color: var(--warm);
+      }
+
+      .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 1.25rem;
+      }
+
+      .pill {
+        border: 1px solid var(--line);
+        background: var(--ink-2);
+        border-radius: 999px;
+        padding: 0.4rem 0.85rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+
+      .pill.mint {
+        border-color: rgba(61, 255, 176, 0.35);
+        color: var(--mint);
+      }
+
+      .cta {
+        display: inline-block;
+        margin-top: 1.75rem;
+        padding: 0.9rem 1.4rem;
+        border-radius: 1rem;
+        background: var(--mint);
+        color: var(--ink);
+        font-family: Syne, sans-serif;
+        font-weight: 700;
+        font-size: 1.05rem;
+        text-decoration: none;
+      }
+
+      .cta:hover {
+        background: var(--mint-dim);
+      }
+
+      .url {
+        margin-top: 1.1rem;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .url a {
+        color: var(--mint);
+        text-decoration: none;
+        border-bottom: 1px solid rgba(61, 255, 176, 0.35);
+      }
+
+      .chrome {
+        position: fixed;
+        z-index: 20;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.85rem 1.25rem 1.1rem;
+        background: linear-gradient(to top, rgba(11, 15, 20, 0.97), transparent);
+        pointer-events: none;
+      }
+
+      .chrome * {
+        pointer-events: auto;
+      }
+
+      .dots {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        align-items: center;
+        max-width: 45%;
+      }
+
+      .dot {
+        width: 0.38rem;
+        height: 0.38rem;
+        border-radius: 50%;
+        border: 0;
+        background: rgba(244, 241, 236, 0.22);
+        cursor: pointer;
+      }
+
+      .dot.active {
+        background: var(--mint);
+        transform: scale(1.3);
+      }
+
+      .nav {
+        display: flex;
+        gap: 0.45rem;
+        align-items: center;
+      }
+
+      .count {
+        color: var(--muted);
+        font-size: 0.8rem;
+        min-width: 3.2rem;
+        text-align: right;
+      }
+
+      .nav button {
+        border: 1px solid var(--line);
+        background: var(--ink-2);
+        color: var(--warm);
+        border-radius: 0.7rem;
+        padding: 0.5rem 0.8rem;
+        font-family: Outfit, sans-serif;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .nav button:hover {
+        border-color: rgba(61, 255, 176, 0.4);
+      }
+
+      .nav button:disabled {
+        opacity: 0.35;
+        cursor: default;
+      }
+
+      .hint {
+        color: var(--muted);
+        font-size: 0.75rem;
+        display: none;
+      }
+
+      @media (min-width: 700px) {
+        .hint {
+          display: block;
+        }
+      }
+
+      .two-col {
+        display: grid;
+        grid-template-columns: 1.1fr 1fr;
+        gap: 1.5rem;
+        align-items: start;
+        margin-top: 1.25rem;
+      }
+
+      @media (max-width: 800px) {
+        .two-col {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .compact .tile {
+        padding: 0.85rem 1rem;
+      }
+
+      .compact .tile strong {
+        font-size: 0.95rem;
+      }
+
+      .compact .tile p {
+        font-size: 0.82rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="deck" id="deck" aria-live="polite">
+      <!-- 0 Title -->
+      <section class="slide active" data-slide="0">
+        <div class="content">
+          <p class="eyebrow">Full product tour</p>
+          <div class="brand">Pulse<span>.</span></div>
+          <p class="lede">
+            Every feature in the shipped app — social feed, Sparks economy,
+            cosmetics, stickers, DMs, pixel map, auctions, and admin tools.
+          </p>
+          <div class="pill-row">
+            <span class="pill mint">Mobile-first</span>
+            <span class="pill">Create · Watch · Earn</span>
+            <span class="pill">Live on Vercel</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 1 Map of features -->
+      <section class="slide" data-slide="1">
+        <div class="content">
+          <p class="eyebrow">Overview</p>
+          <h2>Twelve surfaces. One economy.</h2>
+          <div class="grid four compact">
+            <div class="tile"><strong>Auth</strong><p>Accounts, handles, bans</p></div>
+            <div class="tile"><strong>Home</strong><p>Feed, likes, follows</p></div>
+            <div class="tile"><strong>Stories</strong><p>24-hour images</p></div>
+            <div class="tile"><strong>For You</strong><p>Vertical clips</p></div>
+            <div class="tile"><strong>Create</strong><p>Post or story</p></div>
+            <div class="tile"><strong>Profile</strong><p>Cosmetics + grid</p></div>
+            <div class="tile"><strong>Sparks</strong><p>Earn &amp; spend</p></div>
+            <div class="tile"><strong>Shop</strong><p>41 cosmetics</p></div>
+            <div class="tile"><strong>Stickers</strong><p>6 packs for DMs</p></div>
+            <div class="tile"><strong>DMs</strong><p>Chat + media</p></div>
+            <div class="tile"><strong>Map</strong><p>1M pixel board</p></div>
+            <div class="tile"><strong>Auctions</strong><p>Custom emotes</p></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2 Auth -->
+      <section class="slide" data-slide="2">
+        <div class="content">
+          <p class="eyebrow">Auth</p>
+          <h2>Accounts that stick.</h2>
+          <div class="grid two">
+            <div class="tile">
+              <strong>Sign up</strong>
+              <p>Name, @handle (3–24), email, password. Default bio and SVG avatar on create.</p>
+            </div>
+            <div class="tile">
+              <strong>Log in</strong>
+              <p>NextAuth credentials (JWT). Banned users blocked at login and middleware.</p>
+            </div>
+            <div class="tile">
+              <strong>Protected app</strong>
+              <p>All /app routes require a session. Landing redirects logged-in users home.</p>
+            </div>
+            <div class="tile">
+              <strong>Sign out</strong>
+              <p>Available from your own profile. Session cleared cleanly.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3 Home -->
+      <section class="slide" data-slide="3">
+        <div class="content">
+          <p class="eyebrow">Home feed</p>
+          <h2>Posts, people, and pulse.</h2>
+          <ul class="list">
+            <li>Chronological feed of text, photo, and clip posts</li>
+            <li>Stories rail across the top — jump to create your own</li>
+            <li>Like, follow, view counts, and type labels on every card</li>
+            <li>Equipped frames, badges, and titles render on authors</li>
+            <li><span>Unique views after ~800ms award the author Sparks</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 4 Stories -->
+      <section class="slide" data-slide="4">
+        <div class="content">
+          <p class="eyebrow">Stories</p>
+          <h2>Twenty-four hours. Then gone.</h2>
+          <div class="grid two">
+            <div class="tile">
+              <strong>Create</strong>
+              <p>Image upload or URL plus optional caption. Deep-link from the home rail.</p>
+            </div>
+            <div class="tile">
+              <strong>View</strong>
+              <p>Full-screen overlay from the rail. Caption on top. Tap to close.</p>
+            </div>
+            <div class="tile">
+              <strong>Expiry</strong>
+              <p>Stories expire after 24 hours — ephemeral by design.</p>
+            </div>
+            <div class="tile">
+              <strong>Home-native</strong>
+              <p>Lives on the Home rail; /stories routes back to the feed.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 For You -->
+      <section class="slide" data-slide="5">
+        <div class="content">
+          <p class="eyebrow">For You</p>
+          <h2>Vertical clips that pay.</h2>
+          <ul class="list">
+            <li>TikTok-style full-bleed clip player — muted, looped, inline</li>
+            <li>Swipe, scroll wheel, or arrow / j / k to move between clips</li>
+            <li>Side actions: follow, like, and position counter</li>
+            <li>Unique view after ~600ms on focus → Sparks for the creator</li>
+            <li><span>Tap @handle to open a public profile</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 6 Create -->
+      <section class="slide" data-slide="6">
+        <div class="content">
+          <p class="eyebrow">Create</p>
+          <h2>Ship a post or a story.</h2>
+          <div class="grid three">
+            <div class="tile">
+              <strong>Text</strong>
+              <p>Quick written posts for the home feed.</p>
+            </div>
+            <div class="tile">
+              <strong>Photo</strong>
+              <p>Upload (≤4MB) or paste an allowed media URL.</p>
+            </div>
+            <div class="tile">
+              <strong>Clip</strong>
+              <p>Short video for Home and For You discovery.</p>
+            </div>
+          </div>
+          <p class="lede">
+            Tabs for Post vs Story. Story mode is image + caption with 24h
+            expiry called out in the UI.
+          </p>
+        </div>
+      </section>
+
+      <!-- 7 Profile -->
+      <section class="slide" data-slide="7">
+        <div class="content">
+          <p class="eyebrow">Profile</p>
+          <h2>Your face. Your flex.</h2>
+          <div class="grid two">
+            <div class="tile">
+              <strong>Own profile</strong>
+              <p>Avatar upload, equipped cosmetics, bio, Sparks chip, Wallet / Shop links, sign out.</p>
+            </div>
+            <div class="tile">
+              <strong>Stats &amp; grid</strong>
+              <p>Posts, followers, following — plus a thumbnail grid of your content.</p>
+            </div>
+            <div class="tile">
+              <strong>Public profile</strong>
+              <p>/u/@handle — Follow, Message, cosmetics, and content grid.</p>
+            </div>
+            <div class="tile">
+              <strong>Backgrounds</strong>
+              <p>Shop “bg” cosmetics tint the profile header for real status.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8 Sparks -->
+      <section class="slide" data-slide="8">
+        <div class="content">
+          <p class="eyebrow">Sparks economy</p>
+          <h2>Attention becomes currency.</h2>
+          <div class="stat-row">
+            <div class="stat">
+              <div class="num">+1</div>
+              <div class="label">per unique view</div>
+            </div>
+            <div class="stat">
+              <div class="num">+10</div>
+              <div class="label">per new follow</div>
+            </div>
+          </div>
+          <div class="grid two" style="margin-top: 1.5rem">
+            <div class="tile">
+              <strong>Earn rules</strong>
+              <p>No self-views. No self-follows. Unfollow does not claw Sparks back.</p>
+            </div>
+            <div class="tile">
+              <strong>Spend sinks</strong>
+              <p>Cosmetics, sticker packs, pixel claims (✦1), and auction bids.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 9 Wallet -->
+      <section class="slide" data-slide="9">
+        <div class="content">
+          <p class="eyebrow">Wallet</p>
+          <h2>Balance, ledger, clarity.</h2>
+          <ul class="list">
+            <li>Always-visible Sparks chip in the top bar → Wallet</li>
+            <li>Available balance with totals from views and follows</li>
+            <li>Activity list of recent ledger transactions</li>
+            <li>
+              Reasons:
+              <span>VIEW_EARN · FOLLOW_EARN · SHOP_SPEND · PIXEL_BUY · ADMIN_REWARD · auctions</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 10 Shop -->
+      <section class="slide" data-slide="10">
+        <div class="content">
+          <p class="eyebrow">Shop · Cosmetics</p>
+          <h2>Four slots. Forty-one items.</h2>
+          <div class="grid four compact">
+            <div class="tile">
+              <strong>Frames · 15</strong>
+              <p>Animated rings — pulse, spin, aurora, glow. Mint Pulse ✦25 → Supernova ✦250.</p>
+            </div>
+            <div class="tile">
+              <strong>Badges · 12</strong>
+              <p>Status marks beside your name. Star ✦15 → Crown ✦100.</p>
+            </div>
+            <div class="tile">
+              <strong>Titles · 8</strong>
+              <p>Under-name flex: NPC, Clip Lord, Spark Baron, The GOAT.</p>
+            </div>
+            <div class="tile">
+              <strong>Backgrounds · 6</strong>
+              <p>Profile header washes from Mint Wave to Gilded.</p>
+            </div>
+          </div>
+          <p class="lede">Buy auto-equips. Owned items can Equip or Unequip anytime.</p>
+        </div>
+      </section>
+
+      <!-- 11 Stickers -->
+      <section class="slide" data-slide="11">
+        <div class="content">
+          <p class="eyebrow">Stickers</p>
+          <h2>Six packs for chat energy.</h2>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Pack</th>
+                <th>Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Basics (free forever)</td><td>✦0</td></tr>
+              <tr><td>Meme Pack</td><td>✦30</td></tr>
+              <tr><td>Vibes</td><td>✦40</td></tr>
+              <tr><td>Zoo Crew</td><td>✦50</td></tr>
+              <tr><td>Chaos</td><td>✦75</td></tr>
+              <tr><td>Spark Elite</td><td>✦100</td></tr>
+            </tbody>
+          </table>
+          <p class="lede">Stickers are for DMs — not feed reactions. Owned packs unlock in the chat picker.</p>
+        </div>
+      </section>
+
+      <!-- 12 DMs -->
+      <section class="slide" data-slide="12">
+        <div class="content">
+          <p class="eyebrow">Direct messages</p>
+          <h2>Text, media, stickers, emotes.</h2>
+          <div class="grid two">
+            <div class="tile">
+              <strong>Inbox</strong>
+              <p>Conversations by recency with last-message previews (text / sticker / photo / video).</p>
+            </div>
+            <div class="tile">
+              <strong>Start chat</strong>
+              <p>Open by @handle — upserts a 1:1 thread. Message button on public profiles.</p>
+            </div>
+            <div class="tile">
+              <strong>Thread</strong>
+              <p>Text up to 2,000 chars, image/video attach, owned sticker packs + auction emotes.</p>
+            </div>
+            <div class="tile">
+              <strong>Live-ish</strong>
+              <p>Polls every 5 seconds. Peer cosmetics show in the chat header.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 13 Pixel Map -->
+      <section class="slide" data-slide="13">
+        <div class="content">
+          <p class="eyebrow">Pixel Map · r/Pulse Place</p>
+          <h2>One million pixels. ✦1 each.</h2>
+          <div class="stat-row">
+            <div class="stat">
+              <div class="num">1000²</div>
+              <div class="label">board size</div>
+            </div>
+            <div class="stat">
+              <div class="num">✦1</div>
+              <div class="label">to claim an empty pixel</div>
+            </div>
+          </div>
+          <ul class="list">
+            <li>Pick color + optional message (≤140). First claim owns it.</li>
+            <li>Owners update color/message free — cannot overwrite others</li>
+            <li>Pan, zoom, Place-style palette, coords, owned count</li>
+            <li><span>Entry from top-bar map icon and Shop promo</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 14 Auctions -->
+      <section class="slide" data-slide="14">
+        <div class="content">
+          <p class="eyebrow">Auction House</p>
+          <h2>Bid Sparks. Win custom emotes.</h2>
+          <div class="grid two">
+            <div class="tile">
+              <strong>Live bidding</strong>
+              <p>Min bid = start or current+1. You can’t raise while you’re already leading.</p>
+            </div>
+            <div class="tile">
+              <strong>Escrow</strong>
+              <p>Bid held in ledger. Outbid refunds the previous leader. Cancel refunds too.</p>
+            </div>
+            <div class="tile">
+              <strong>Win → chat</strong>
+              <p>Highest bidder gets an OwnedEmote usable as a DM sticker (image or glyph).</p>
+            </div>
+            <div class="tile">
+              <strong>Inventory</strong>
+              <p>Your emotes + recent ended/cancelled results. Expired auctions settle on load.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 15 Admin -->
+      <section class="slide" data-slide="15">
+        <div class="content">
+          <p class="eyebrow">Admin</p>
+          <h2>Moderate. Mint. Auction.</h2>
+          <div class="grid two">
+            <div class="tile">
+              <strong>Users</strong>
+              <p>Ban / unban (not admins). Gift Sparks (1–1M). Top-bar Admin badge.</p>
+            </div>
+            <div class="tile">
+              <strong>Content</strong>
+              <p>Edit or delete posts. Edit/delete messages. Delete whole conversations.</p>
+            </div>
+            <div class="tile">
+              <strong>Emote factory</strong>
+              <p>AI generate (Flux), pixel/sign letter renderer, manual 16/24/32 editor, regen.</p>
+            </div>
+            <div class="tile">
+              <strong>Auctions</strong>
+              <p>Start (bid + 1–168h), end now &amp; award, or cancel &amp; refund.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 16 Shell UX -->
+      <section class="slide" data-slide="16">
+        <div class="content">
+          <p class="eyebrow">Navigation</p>
+          <h2>Phone shell. Sticky chrome.</h2>
+          <div class="two-col">
+            <div>
+              <h2 style="font-size: 1.2rem; margin-bottom: 0.75rem">Bottom nav</h2>
+              <div class="pill-row" style="margin-top: 0">
+                <span class="pill mint">Home</span>
+                <span class="pill mint">For You</span>
+                <span class="pill mint">Create</span>
+                <span class="pill mint">Shop</span>
+                <span class="pill mint">Profile</span>
+              </div>
+              <h2 style="font-size: 1.2rem; margin: 1.5rem 0 0.75rem">Top bar</h2>
+              <div class="pill-row" style="margin-top: 0">
+                <span class="pill">Pulse</span>
+                <span class="pill">Admin</span>
+                <span class="pill">Map</span>
+                <span class="pill">Messages</span>
+                <span class="pill">Sparks</span>
+              </div>
+            </div>
+            <div class="tile">
+              <strong>Secondary routes</strong>
+              <p>Wallet · Messages · Map · Auction · Admin · /u/@handle</p>
+              <p style="margin-top: 0.75rem">
+                Max-width ~430px, dark atmosphere, safe-area padding — built to feel native on a phone.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 17 Stack -->
+      <section class="slide" data-slide="17">
+        <div class="content">
+          <p class="eyebrow">Infrastructure</p>
+          <h2>Cloud-native. Data-safe.</h2>
+          <ul class="list">
+            <li>Next.js 15 on <span>Vercel</span></li>
+            <li>Accounts, posts, chats on <span>Neon Postgres (Prisma)</span></li>
+            <li>Photos &amp; videos on <span>Vercel Blob</span> (local /uploads in dev)</li>
+            <li>Auth with <span>NextAuth credentials + JWT</span></li>
+            <li><span>Deploys update code — never wipe user data</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 18 Feature checklist -->
+      <section class="slide" data-slide="18">
+        <div class="content">
+          <p class="eyebrow">Feature checklist</p>
+          <h2>Everything shipping today.</h2>
+          <div class="grid three compact">
+            <div class="tile"><strong>Auth &amp; bans</strong><p>Signup, login, middleware lock</p></div>
+            <div class="tile"><strong>Home feed</strong><p>Posts, likes, follows, view-earn</p></div>
+            <div class="tile"><strong>Stories</strong><p>24h image stories + viewer</p></div>
+            <div class="tile"><strong>For You</strong><p>Vertical clip player</p></div>
+            <div class="tile"><strong>Create</strong><p>Text / photo / clip / story</p></div>
+            <div class="tile"><strong>Profiles</strong><p>Own + public, PFP upload</p></div>
+            <div class="tile"><strong>Sparks wallet</strong><p>+1 view · +10 follow · ledger</p></div>
+            <div class="tile"><strong>Cosmetics shop</strong><p>Frames, badges, titles, bgs</p></div>
+            <div class="tile"><strong>Sticker packs</strong><p>6 packs for DMs</p></div>
+            <div class="tile"><strong>Direct messages</strong><p>Text, media, stickers, emotes</p></div>
+            <div class="tile"><strong>Pixel map</strong><p>1,000×1,000 · ✦1 / pixel</p></div>
+            <div class="tile"><strong>Emote auctions</strong><p>Bid, escrow, win → chat</p></div>
+            <div class="tile"><strong>Admin tools</strong><p>Mod + AI/pixel emote mint</p></div>
+            <div class="tile"><strong>Top / bottom nav</strong><p>Phone shell UX</p></div>
+            <div class="tile"><strong>Cloud stack</strong><p>Vercel · Neon · Blob</p></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 19 CTA -->
+      <section class="slide" data-slide="19">
+        <div class="content">
+          <p class="eyebrow">Live</p>
+          <h1>Try every feature.</h1>
+          <p class="lede">
+            Sign up, post a clip, earn Sparks, buy a frame, claim a pixel, bid an
+            emote, and DM with stickers.
+          </p>
+          <a
+            class="cta"
+            href="https://pulse-sand-alpha.vercel.app"
+            target="_blank"
+            rel="noreferrer"
+            >Open Pulse</a
+          >
+          <p class="url">
+            <a
+              href="https://pulse-sand-alpha.vercel.app"
+              target="_blank"
+              rel="noreferrer"
+              >pulse-sand-alpha.vercel.app</a
+            >
+          </p>
+        </div>
+      </section>
+    </div>
+
+    <div class="chrome">
+      <div class="dots" id="dots" aria-label="Slide progress"></div>
+      <p class="hint">← → · F fullscreen</p>
+      <div class="nav">
+        <span class="count" id="count">1 / 20</span>
+        <button type="button" id="prev" aria-label="Previous slide">Prev</button>
+        <button type="button" id="next" aria-label="Next slide">Next</button>
+      </div>
+    </div>
+
+    <script>
+      const slides = [...document.querySelectorAll(".slide")];
+      const dotsEl = document.getElementById("dots");
+      const prevBtn = document.getElementById("prev");
+      const nextBtn = document.getElementById("next");
+      const countEl = document.getElementById("count");
+      let index = 0;
+
+      slides.forEach((_, i) => {
+        const dot = document.createElement("button");
+        dot.className = "dot" + (i === 0 ? " active" : "");
+        dot.type = "button";
+        dot.setAttribute("aria-label", "Go to slide " + (i + 1));
+        dot.addEventListener("click", () => go(i));
+        dotsEl.appendChild(dot);
+      });
+
+      const dots = [...dotsEl.querySelectorAll(".dot")];
+
+      function go(n) {
+        index = Math.max(0, Math.min(slides.length - 1, n));
+        slides.forEach((s, i) => s.classList.toggle("active", i === index));
+        dots.forEach((d, i) => d.classList.toggle("active", i === index));
+        prevBtn.disabled = index === 0;
+        nextBtn.disabled = index === slides.length - 1;
+        countEl.textContent = index + 1 + " / " + slides.length;
+      }
+
+      prevBtn.addEventListener("click", () => go(index - 1));
+      nextBtn.addEventListener("click", () => go(index + 1));
+
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
+          e.preventDefault();
+          go(index + 1);
+        } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
+          e.preventDefault();
+          go(index - 1);
+        } else if (e.key === "Home") {
+          go(0);
+        } else if (e.key === "End") {
+          go(slides.length - 1);
+        } else if (e.key.toLowerCase() === "f") {
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen?.();
+          } else {
+            document.exitFullscreen?.();
+          }
+        }
+      });
+
+      let touchX = null;
+      window.addEventListener(
+        "touchstart",
+        (e) => {
+          touchX = e.changedTouches[0].clientX;
+        },
+        { passive: true }
+      );
+      window.addEventListener(
+        "touchend",
+        (e) => {
+          if (touchX == null) return;
+          const dx = e.changedTouches[0].clientX - touchX;
+          if (Math.abs(dx) > 50) go(index + (dx < 0 ? 1 : -1));
+          touchX = null;
+        },
+        { passive: true }
+      );
+
+      go(0);
+    </script>
+  </body>
+</html>

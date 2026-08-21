@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/sign-out-button";
 import { NameWithBadge } from "@/components/avatar";
 import { AvatarUploader } from "@/components/avatar-uploader";
+import { OwnPostTile } from "@/components/own-post-tile";
 import { getCosmetic } from "@/lib/cosmetics";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
@@ -90,21 +91,15 @@ export default async function ProfilePage() {
         ) : (
           <div className="mt-3 grid grid-cols-3 gap-1">
             {posts.map((p) => (
-              <div
+              <OwnPostTile
                 key={p.id}
-                className="aspect-square overflow-hidden rounded-lg bg-ink-3"
-              >
-                {p.type === "IMAGE" ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.mediaUrl} alt="" className="h-full w-full object-cover" />
-                ) : p.type === "CLIP" ? (
-                  <video src={p.mediaUrl} muted preload="metadata" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full items-center p-2 text-[10px] leading-tight text-muted">
-                    {p.body.slice(0, 80)}
-                  </div>
-                )}
-              </div>
+                post={{
+                  id: p.id,
+                  type: p.type,
+                  body: p.body,
+                  mediaUrl: p.mediaUrl,
+                }}
+              />
             ))}
           </div>
         )}

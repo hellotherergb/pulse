@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { FollowButton } from "@/components/action-buttons";
 import { MessageButton } from "@/components/message-button";
 import { Avatar, NameWithBadge } from "@/components/avatar";
+import { OwnPostTile } from "@/components/own-post-tile";
 import { getCosmetic } from "@/lib/cosmetics";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
@@ -91,23 +92,40 @@ export default async function UserProfilePage({
 
         <h2 className="font-display mt-8 text-lg font-600">Content</h2>
         <div className="mt-3 grid grid-cols-3 gap-1 pb-6">
-          {posts.map((p) => (
-            <div
-              key={p.id}
-              className="aspect-square overflow-hidden rounded-lg bg-ink-3"
-            >
-              {p.type === "IMAGE" ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.mediaUrl} alt="" className="h-full w-full object-cover" />
-              ) : p.type === "CLIP" ? (
-                <video src={p.mediaUrl} muted preload="metadata" className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full items-center p-2 text-[10px] text-muted">
-                  {p.body.slice(0, 80)}
-                </div>
-              )}
-            </div>
-          ))}
+          {posts.map((p) =>
+            isOwn ? (
+              <OwnPostTile
+                key={p.id}
+                post={{
+                  id: p.id,
+                  type: p.type,
+                  body: p.body,
+                  mediaUrl: p.mediaUrl,
+                }}
+              />
+            ) : (
+              <div
+                key={p.id}
+                className="aspect-square overflow-hidden rounded-lg bg-ink-3"
+              >
+                {p.type === "IMAGE" ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.mediaUrl} alt="" className="h-full w-full object-cover" />
+                ) : p.type === "CLIP" ? (
+                  <video
+                    src={p.mediaUrl}
+                    muted
+                    preload="metadata"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full items-center p-2 text-[10px] text-muted">
+                    {p.body.slice(0, 80)}
+                  </div>
+                )}
+              </div>
+            ),
+          )}
         </div>
       </div>
     </div>

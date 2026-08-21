@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LikeButton, FollowButton } from "./action-buttons";
+import { LikeButton, FollowButton, DeletePostButton } from "./action-buttons";
 import { ViewTracker } from "./view-tracker";
 import { Avatar, NameWithBadge } from "./avatar";
 
@@ -58,7 +58,9 @@ export function PostCard({ post, liked, following, isOwn }: PostCardProps) {
               </Link>
               <p className="text-xs text-muted">@{post.author.handle}</p>
             </div>
-            {!isOwn && (
+            {isOwn ? (
+              <DeletePostButton postId={post.id} />
+            ) : (
               <FollowButton userId={post.author.id} following={following} compact />
             )}
           </div>

@@ -216,6 +216,20 @@ export async function toggleFollowAction(targetUserId: string) {
   return { following: true };
 }
 
+export async function deleteOwnPostAction(postId: string) {
+  const user = await requireUser();
+  const post = await prisma.post.findUnique({ where: { id: postId } });
+  if (!post) return { error: "Post not found" };
+  if (post.authorId !== user.id) return { error: "You can only delete your own posts" };
+
+  await prisma.post.delete({ where: { id: postId } });
+  revalidatePath("/app");
+  revalidatePath("/app/foryou");
+  revalidatePath("/app/profile");
+  revalidatePath(`/app/u/${user.handle}`);
+  return { ok: true as const };
+}
+
 export async function recordViewAction(postId: string) {
   const user = await requireUser();
   const post = await prisma.post.findUnique({ where: { id: postId } });

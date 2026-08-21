@@ -2,7 +2,13 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { recordViewAction, toggleLikeAction, toggleFollowAction } from "@/lib/actions";
+import { useRouter } from "next/navigation";
+import {
+  recordViewAction,
+  toggleLikeAction,
+  toggleFollowAction,
+  deleteOwnPostAction,
+} from "@/lib/actions";
 
 type Clip = {
   id: string;
@@ -108,7 +114,9 @@ export function ForYouFeed({ clips }: { clips: Clip[] }) {
       </div>
 
       <div className="absolute bottom-10 right-3 z-10 flex flex-col items-center gap-4">
-        {!clip.isOwn && (
+        {clip.isOwn ? (
+          <ClipDelete postId={clip.id} />
+        ) : (
           <ClipFollow userId={clip.author.id} following={clip.following} />
         )}
         <ClipLike postId={clip.id} liked={clip.liked} count={clip.likesCount} />
@@ -117,6 +125,28 @@ export function ForYouFeed({ clips }: { clips: Clip[] }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function ClipDelete({ postId }: { postId: string }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      className="rounded-full border border-white/30 bg-black/45 px-3 py-1.5 text-xs font-bold text-white backdrop-blur disabled:opacity-50"
+      onClick={() => {
+        if (!window.confirm("Delete this clip permanently?")) return;
+        start(async () => {
+          const res = await deleteOwnPostAction(postId);
+          if (!res?.error) router.refresh();
+        });
+      }}
+    >
+      {pending ? "…" : "Delete"}
+    </button>
   );
 }
 
