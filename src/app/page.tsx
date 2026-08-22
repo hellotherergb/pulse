@@ -1,6 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/session";
 import { redirect } from "next/navigation";
+
+export const metadata: Metadata = {
+  title: "Pulse — Create. Watch. Earn Sparks.",
+  description:
+    "Pulse is a social app for clips, posts, and stories. Earn Sparks for views and followers.",
+  alternates: { canonical: "/" },
+};
 
 export default async function LandingPage() {
   const user = await getCurrentUser();
@@ -17,6 +25,9 @@ export default async function LandingPage() {
           />
 
           <div className="relative z-10 flex flex-1 flex-col px-6 pb-10 pt-8">
+            <p className="animate-fade-up text-sm font-semibold uppercase tracking-[0.2em] text-mint/80">
+              Pulse social app
+            </p>
             <h1 className="animate-fade-up font-display text-6xl font-800 leading-[0.92] tracking-tight text-warm md:text-7xl">
               Pulse
               <span className="text-mint">.</span>
