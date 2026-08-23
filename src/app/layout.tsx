@@ -63,6 +63,11 @@ export const metadata: Metadata = {
     title: "Pulse",
     statusBarStyle: "black-translucent",
   },
+  verification: {
+    other: {
+      "msvalidate.01": "0B0A48755F7D1C7FB6E929D75B77017D",
+    },
+  },
 };
 
 export const viewport: Viewport = {
