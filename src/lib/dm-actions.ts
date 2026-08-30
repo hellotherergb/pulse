@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
+import { blockIfViolatesPolicy } from "@/lib/moderation-guard";
 
 function pairIds(a: string, b: string): [string, string] {
   return a < b ? [a, b] : [b, a];
@@ -65,6 +66,16 @@ export async function sendMessageAction(
   if (kind === "IMAGE" || kind === "VIDEO") {
     const { isAllowedMediaUrl } = await import("@/lib/media");
     if (!isAllowedMediaUrl(text)) return { error: "Invalid media" };
+  }
+
+  if (kind === "TEXT") {
+    const blocked = await blockIfViolatesPolicy({
+      userId: user.id,
+      text,
+      source: "MESSAGE",
+      sourceId: conversationId,
+    });
+    if (blocked) return { error: blocked };
   }
 
   const convo = await prisma.conversation.findUnique({

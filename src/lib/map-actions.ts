@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUser, revalidateUser } from "@/lib/session";
+import { blockIfViolatesPolicy } from "@/lib/moderation-guard";
 import {
   isValidPixelIndex,
   normalizeColor,
@@ -57,6 +58,13 @@ export async function buyPixelAction(input: {
   if (!color) return { error: "Color must be #RRGGBB" };
 
   const message = normalizeMessage(input.message);
+
+  const blocked = await blockIfViolatesPolicy({
+    userId: user.id,
+    text: message,
+    source: "PIXEL",
+  });
+  if (blocked) return { error: blocked };
 
   if (user.sparksBalance < PIXEL_PRICE) {
     return {
@@ -139,6 +147,14 @@ export async function updatePixelAction(input: {
   if (!color) return { error: "Color must be #RRGGBB" };
 
   const message = normalizeMessage(input.message);
+
+  const blocked = await blockIfViolatesPolicy({
+    userId: user.id,
+    text: message,
+    source: "PIXEL",
+    sourceId: String(index),
+  });
+  if (blocked) return { error: blocked };
 
   const existing = await prisma.mapPixel.findUnique({ where: { index } });
   if (!existing) return { error: "Pixel not found" };

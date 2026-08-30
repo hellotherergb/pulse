@@ -133,3 +133,49 @@ export async function adminDeleteConversationAction(formData: FormData) {
   revalidateAdmin();
   return { ok: true as const };
 }
+
+export async function adminApproveBanRequestAction(formData: FormData) {
+  await requireAdmin();
+  const requestId = String(formData.get("requestId") || "");
+  if (!requestId) return { error: "Missing request" };
+
+  const req = await prisma.banRequest.findUnique({
+    where: { id: requestId },
+    include: { user: { select: { id: true, isAdmin: true, handle: true } } },
+  });
+  if (!req) return { error: "Request not found" };
+  if (req.status !== "PENDING") return { error: "Already handled" };
+  if (req.user.isAdmin) return { error: "Cannot ban an admin" };
+
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: req.userId },
+      data: { banned: true },
+    }),
+    prisma.banRequest.update({
+      where: { id: requestId },
+      data: { status: "BANNED" },
+    }),
+  ]);
+
+  revalidateAdmin();
+  return { ok: true as const };
+}
+
+export async function adminDismissBanRequestAction(formData: FormData) {
+  await requireAdmin();
+  const requestId = String(formData.get("requestId") || "");
+  if (!requestId) return { error: "Missing request" };
+
+  const req = await prisma.banRequest.findUnique({ where: { id: requestId } });
+  if (!req) return { error: "Request not found" };
+  if (req.status !== "PENDING") return { error: "Already handled" };
+
+  await prisma.banRequest.update({
+    where: { id: requestId },
+    data: { status: "DISMISSED" },
+  });
+  revalidateAdmin();
+  return { ok: true as const };
+}
+

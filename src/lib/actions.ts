@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUser, revalidateUser } from "@/lib/session";
 import { isAllowedMediaUrl } from "@/lib/media";
+import { blockIfViolatesPolicy } from "@/lib/moderation-guard";
 
 const signupSchema = z.object({
   name: z.string().min(2).max(40),
@@ -106,6 +107,13 @@ export async function createPostAction(formData: FormData) {
     return { error: "Invalid media URL" };
   }
 
+  const blocked = await blockIfViolatesPolicy({
+    userId: user.id,
+    text: `${body ?? ""} ${mediaUrl ?? ""}`,
+    source: "POST",
+  });
+  if (blocked) return { error: blocked };
+
   await prisma.post.create({
     data: {
       authorId: user.id,
@@ -128,6 +136,13 @@ export async function createStoryAction(formData: FormData) {
 
   if (!mediaUrl) return { error: "Story needs a media URL" };
   if (!isAllowedMediaUrl(mediaUrl)) return { error: "Invalid media URL" };
+
+  const blocked = await blockIfViolatesPolicy({
+    userId: user.id,
+    text: caption,
+    source: "STORY",
+  });
+  if (blocked) return { error: blocked };
 
   await prisma.story.create({
     data: {

@@ -15,6 +15,8 @@ import {
   adminEditMessageAction,
   adminDeleteMessageAction,
   adminDeleteConversationAction,
+  adminApproveBanRequestAction,
+  adminDismissBanRequestAction,
 } from "@/lib/admin-actions";
 import {
   adminCreateEmoteAction,
@@ -33,7 +35,8 @@ export default async function AdminPage() {
 
   await settleExpiredAuctions();
 
-  const [users, posts, conversations, emotes, openAuctions] = await Promise.all([
+  const [users, posts, conversations, emotes, openAuctions, banRequests] =
+    await Promise.all([
     prisma.user.findMany({
       orderBy: { createdAt: "desc" },
       take: 80,
@@ -86,6 +89,22 @@ export default async function AdminPage() {
         _count: { select: { bids: true } },
       },
     }),
+    prisma.banRequest.findMany({
+      where: { status: "PENDING" },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            handle: true,
+            email: true,
+            banned: true,
+          },
+        },
+      },
+    }),
   ]);
 
   return (
@@ -94,7 +113,7 @@ export default async function AdminPage() {
         <p className="text-xs uppercase tracking-[0.2em] text-mint">Admin</p>
         <h1 className="font-display text-2xl font-bold text-warm">Moderation</h1>
         <p className="mt-1 text-sm text-muted">
-          Ban users, gift Sparks, run emote auctions, edit/delete posts and chats.
+          Ban requests, gift Sparks, run emote auctions, edit/delete posts and chats.
         </p>
         <div className="mt-2 flex flex-wrap gap-3 text-sm">
           <Link href="/app" className="text-mint hover:underline">
@@ -105,6 +124,70 @@ export default async function AdminPage() {
           </Link>
         </div>
       </div>
+
+      <section className="space-y-3">
+        <h2 className="font-display text-lg font-semibold text-danger">
+          Ban requests{" "}
+          {banRequests.length > 0 ? (
+            <span className="text-sm font-semibold">({banRequests.length})</span>
+          ) : null}
+        </h2>
+        <p className="text-xs text-muted">
+          Auto-flagged child-sexual / exploitation language. Content was blocked
+          from posting. Approve to ban the user, or dismiss if it was a false alarm.
+        </p>
+        {banRequests.length === 0 ? (
+          <p className="rounded-2xl border border-line bg-ink-2/50 px-3 py-4 text-sm text-muted">
+            No pending ban requests.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {banRequests.map((r) => (
+              <article
+                key={r.id}
+                className="rounded-2xl border border-danger/35 bg-danger/5 p-3"
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="font-semibold text-warm">
+                    {r.user.name}{" "}
+                    <span className="text-muted">@{r.user.handle}</span>
+                    {r.user.banned ? (
+                      <span className="ml-2 text-xs text-danger">already banned</span>
+                    ) : null}
+                  </p>
+                  <p className="text-xs text-muted">
+                    {r.source} · {r.createdAt.toLocaleString()}
+                  </p>
+                </div>
+                <p className="mt-1 text-sm font-semibold text-danger">{r.reason}</p>
+                <p className="mt-2 whitespace-pre-wrap rounded-xl border border-line bg-ink-2 px-3 py-2 text-xs text-warm/90">
+                  {r.snippet || "(empty)"}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <AdminForm action={adminApproveBanRequestAction}>
+                    <input type="hidden" name="requestId" value={r.id} />
+                    <button
+                      type="submit"
+                      className="rounded-lg bg-danger px-3 py-1.5 text-xs font-semibold text-white"
+                    >
+                      Ban user
+                    </button>
+                  </AdminForm>
+                  <AdminForm action={adminDismissBanRequestAction}>
+                    <input type="hidden" name="requestId" value={r.id} />
+                    <button
+                      type="submit"
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-muted"
+                    >
+                      Dismiss
+                    </button>
+                  </AdminForm>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="space-y-3">
         <h2 className="font-display text-lg font-semibold">Custom emotes & auctions</h2>

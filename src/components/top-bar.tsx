@@ -4,10 +4,12 @@ export function TopBar({
   sparks,
   title = "Pulse",
   isAdmin = false,
+  pendingBans = 0,
 }: {
   sparks: number;
   title?: string;
   isAdmin?: boolean;
+  pendingBans?: number;
 }) {
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-ink/80 px-4 py-3 backdrop-blur-xl">
@@ -18,9 +20,14 @@ export function TopBar({
         {isAdmin ? (
           <Link
             href="/app/admin"
-            className="rounded-full border border-danger/40 px-2.5 py-1 text-xs font-semibold text-danger"
+            className="relative rounded-full border border-danger/40 px-2.5 py-1 text-xs font-semibold text-danger"
           >
             Admin
+            {pendingBans > 0 ? (
+              <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">
+                {pendingBans > 9 ? "9+" : pendingBans}
+              </span>
+            ) : null}
           </Link>
         ) : null}
         <Link

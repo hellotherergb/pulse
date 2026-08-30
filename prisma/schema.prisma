@@ -41,6 +41,24 @@ model User {
   createdAuctions Auction[]      @relation("AuctionCreator")
   auctionBids    Bid[]
   leadingAuctions Auction[]      @relation("AuctionLeader")
+  banRequests    BanRequest[]
+}
+
+/// Flagged content awaiting admin ban decision (e.g. child-sexual exploitation).
+model BanRequest {
+  id        String   @id @default(cuid())
+  userId    String
+  reason    String
+  snippet   String   @default("") @db.VarChar(280)
+  source    String // POST | STORY | MESSAGE | PIXEL | BIO
+  sourceId  String   @default("")
+  status    String   @default("PENDING") // PENDING | BANNED | DISMISSED
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId])
 }
 
 model MapPixel {
