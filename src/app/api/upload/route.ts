@@ -5,6 +5,7 @@ import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import crypto from "crypto";
 import { authOptions } from "@/lib/auth";
+import { moderateImage } from "@/lib/moderate-image";
 
 // Vercel serverless body limit is ~4.5MB on hobby; keep headroom.
 const MAX_BYTES = 4 * 1024 * 1024;
@@ -53,12 +54,28 @@ export async function POST(req: Request) {
     );
   }
 
+  const bytes = Buffer.from(await file.arrayBuffer());
+
+  // Scan BEFORE storing — never put blocked images in Blob.
+  const mod = await moderateImage({
+    userId: session.user.id,
+    buffer: bytes,
+    filename: file.name || `upload${ext}`,
+    mime: file.type,
+  });
+  if (!mod.ok) {
+    return NextResponse.json({ error: mod.error }, { status: 403 });
+  }
+
   const name = `pulse/${session.user.id}/${crypto.randomBytes(10).toString("hex")}${ext}`;
   const kind = file.type.startsWith("video/") ? "VIDEO" : "IMAGE";
+  const safeFile = new File([bytes], file.name || `upload${ext}`, {
+    type: file.type,
+  });
 
   // Production / when Blob token is set: store in Vercel Blob (survives deploys).
   if (process.env.BLOB_READ_WRITE_TOKEN) {
-    const blob = await put(name, file, {
+    const blob = await put(name, safeFile, {
       access: "public",
       token: process.env.BLOB_READ_WRITE_TOKEN,
       contentType: file.type,
@@ -79,7 +96,6 @@ export async function POST(req: Request) {
   }
 
   // Local fallback for offline development without Blob.
-  const bytes = Buffer.from(await file.arrayBuffer());
   const localName = `${crypto.randomBytes(10).toString("hex")}${ext}`;
   const dir = path.join(process.cwd(), "public", "uploads");
   await mkdir(dir, { recursive: true });

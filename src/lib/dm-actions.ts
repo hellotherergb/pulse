@@ -68,6 +68,12 @@ export async function sendMessageAction(
     if (!isAllowedMediaUrl(text)) return { error: "Invalid media" };
   }
 
+  if (kind === "IMAGE") {
+    const { moderateImageUrl } = await import("@/lib/moderate-image");
+    const img = await moderateImageUrl(user.id, text);
+    if (!img.ok) return { error: img.error };
+  }
+
   if (kind === "TEXT") {
     const blocked = await blockIfViolatesPolicy({
       userId: user.id,

@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser, revalidateUser } from "@/lib/session";
 import { isAllowedMediaUrl } from "@/lib/media";
 import { blockIfViolatesPolicy, createUserReport } from "@/lib/moderation-guard";
+import { moderateImageUrl } from "@/lib/moderate-image";
 
 const signupSchema = z.object({
   name: z.string().min(2).max(40),
@@ -114,6 +115,11 @@ export async function createPostAction(formData: FormData) {
   });
   if (blocked) return { error: blocked };
 
+  if (type === "IMAGE" && mediaUrl?.trim()) {
+    const img = await moderateImageUrl(user.id, mediaUrl.trim());
+    if (!img.ok) return { error: img.error };
+  }
+
   await prisma.post.create({
     data: {
       authorId: user.id,
@@ -143,6 +149,9 @@ export async function createStoryAction(formData: FormData) {
     source: "STORY",
   });
   if (blocked) return { error: blocked };
+
+  const img = await moderateImageUrl(user.id, mediaUrl);
+  if (!img.ok) return { error: img.error };
 
   await prisma.story.create({
     data: {
