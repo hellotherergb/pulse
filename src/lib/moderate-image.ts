@@ -1,15 +1,12 @@
+import * as tf from "@tensorflow/tfjs";
+import * as nsfwjs from "nsfwjs";
+import sharp from "sharp";
 import { prisma } from "@/lib/prisma";
 import { snippetForAdmin } from "@/lib/content-moderation";
 
 export type ImageModerationResult =
   | { ok: true }
   | { ok: false; error: string; banRequest?: boolean };
-
-function sightengineConfigured() {
-  return Boolean(
-    process.env.SIGHTENGINE_API_USER && process.env.SIGHTENGINE_API_SECRET,
-  );
-}
 
 type SightengineResponse = {
   status?: string;
@@ -20,59 +17,25 @@ type SightengineResponse = {
     erotica?: number;
     very_suggestive?: number;
     suggestive?: number;
-    none?: number;
   };
   faces?: Array<{
-    attributes?: {
-      age?: {
-        minor?: number;
-      };
-    };
+    attributes?: { age?: { minor?: number } };
   }>;
 };
 
-function evaluateSightengine(data: SightengineResponse): {
-  block: boolean;
-  critical: boolean;
-  reason: string;
-} {
-  const n = data.nudity ?? {};
-  const sexual = Math.max(
-    n.sexual_activity ?? 0,
-    n.sexual_display ?? 0,
-    n.erotica ?? 0,
-  );
-  const suggestive = Math.max(
-    n.very_suggestive ?? 0,
-    n.suggestive ?? 0,
-  );
+let modelPromise: Promise<nsfwjs.NSFWJS> | null = null;
 
-  const faces = data.faces ?? [];
-  const maxMinor = faces.reduce(
-    (m, f) => Math.max(m, f.attributes?.age?.minor ?? 0),
-    0,
-  );
-  const hasMinor = maxMinor >= 0.55;
-
-  // Child + sexual / suggestive imagery → critical ban request
-  if (hasMinor && (sexual >= 0.25 || suggestive >= 0.45)) {
-    return {
-      block: true,
-      critical: true,
-      reason: "Possible sexual imagery involving a minor",
-    };
+function getModel() {
+  if (!modelPromise) {
+    modelPromise = nsfwjs.load("MobileNetV2Mid", { size: 224 });
   }
+  return modelPromise;
+}
 
-  // Explicit adult sexual content — block send (no ban unless extreme)
-  if (sexual >= 0.55) {
-    return {
-      block: true,
-      critical: false,
-      reason: "Sexual imagery is not allowed",
-    };
-  }
-
-  return { block: false, critical: false, reason: "" };
+function sightengineConfigured() {
+  return Boolean(
+    process.env.SIGHTENGINE_API_USER && process.env.SIGHTENGINE_API_SECRET,
+  );
 }
 
 async function createImageBanRequest(userId: string, reason: string) {
@@ -143,9 +106,107 @@ async function checkWithSightengine(opts: {
   return (await res.json()) as SightengineResponse;
 }
 
+function evaluateSightengine(data: SightengineResponse) {
+  const n = data.nudity ?? {};
+  const sexual = Math.max(
+    n.sexual_activity ?? 0,
+    n.sexual_display ?? 0,
+    n.erotica ?? 0,
+  );
+  const suggestive = Math.max(
+    n.very_suggestive ?? 0,
+    n.suggestive ?? 0,
+  );
+  const maxMinor = (data.faces ?? []).reduce(
+    (m, f) => Math.max(m, f.attributes?.age?.minor ?? 0),
+    0,
+  );
+  const hasMinor = maxMinor >= 0.55;
+
+  if (hasMinor && (sexual >= 0.25 || suggestive >= 0.45)) {
+    return {
+      block: true,
+      critical: true,
+      reason: "Possible sexual imagery involving a minor",
+    };
+  }
+  if (sexual >= 0.55) {
+    return {
+      block: true,
+      critical: false,
+      reason: "Sexual imagery is not allowed",
+    };
+  }
+  return { block: false, critical: false, reason: "" };
+}
+
+/** Built-in NSFW scan — no external account required. */
+async function checkWithNsfwJs(buffer: Buffer) {
+  await tf.ready();
+  const model = await getModel();
+
+  const { data, info } = await sharp(buffer)
+    .rotate()
+    .resize(224, 224, { fit: "cover" })
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  if (info.channels !== 3) {
+    return { block: false, critical: false, reason: "" };
+  }
+
+  const image = tf.tensor3d(new Uint8Array(data), [info.height, info.width, 3]);
+  try {
+    const preds = await model.classify(image);
+    const score = (name: string) =>
+      preds.find((p) => p.className === name)?.probability ?? 0;
+
+    const porn = score("Porn");
+    const hentai = score("Hentai");
+    const sexy = score("Sexy");
+
+    // Hard block explicit sexual imagery
+    if (porn >= 0.55 || hentai >= 0.6) {
+      return {
+        block: true,
+        critical: true,
+        reason: "Sexual imagery is not allowed",
+      };
+    }
+    if (sexy >= 0.75 && porn + hentai >= 0.25) {
+      return {
+        block: true,
+        critical: false,
+        reason: "Sexual imagery is not allowed",
+      };
+    }
+    return { block: false, critical: false, reason: "" };
+  } finally {
+    image.dispose();
+  }
+}
+
+async function fetchUrlBuffer(url: string): Promise<Buffer | null> {
+  try {
+    const res = await fetch(url, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!res.ok) return null;
+    const ctype = res.headers.get("content-type") || "";
+    if (ctype && !ctype.startsWith("image/") && !ctype.includes("octet-stream")) {
+      return null;
+    }
+    return Buffer.from(await res.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Scan an image before it is stored or accepted.
- * Requires SIGHTENGINE_API_USER + SIGHTENGINE_API_SECRET.
+ * Uses built-in NSFW model by default; Sightengine if keys are set (better minor detection).
  */
 export async function moderateImage(opts: {
   userId: string;
@@ -154,45 +215,44 @@ export async function moderateImage(opts: {
   mime?: string;
   url?: string;
 }): Promise<ImageModerationResult> {
-  const isImage =
-    !opts.mime ||
-    opts.mime.startsWith("image/") ||
-    Boolean(opts.url && !/\.(mp4|webm|mov)(\?|$)/i.test(opts.url));
-
-  if (!isImage) {
-    // Video: block until a video scanner is configured (photos are the main ask).
-    if (opts.mime?.startsWith("video/") && sightengineConfigured()) {
-      return {
-        ok: false,
-        error:
-          "Video safety scanning is limited — upload a photo, or paste a link after review.",
-      };
-    }
+  if (opts.mime?.startsWith("video/")) {
+    // Keep clips allowed; photo scanner is the main gate for now.
     return { ok: true };
   }
 
-  if (!sightengineConfigured()) {
-    if (process.env.VERCEL || process.env.REQUIRE_IMAGE_MODERATION === "1") {
-      return {
-        ok: false,
-        error:
-          "Image safety check is not configured. Add SIGHTENGINE_API_USER and SIGHTENGINE_API_SECRET.",
-      };
+  let buffer = opts.buffer;
+  if (!buffer && opts.url) {
+    if (opts.url.startsWith("data:image/")) {
+      const base64 = opts.url.split(",")[1];
+      if (base64) buffer = Buffer.from(base64, "base64");
+    } else {
+      buffer = (await fetchUrlBuffer(opts.url)) ?? undefined;
     }
-    // Local/dev without keys: allow (so you can still build).
+  }
+
+  if (!buffer || buffer.length < 32) {
     return { ok: true };
   }
 
   try {
-    const data = await checkWithSightengine(opts);
-    if (data.status === "failure" || data.error) {
-      return {
-        ok: false,
-        error: "Could not verify this image. Try another photo.",
-      };
+    let verdict = { block: false, critical: false, reason: "" };
+
+    if (sightengineConfigured()) {
+      const data = await checkWithSightengine({
+        buffer,
+        filename: opts.filename,
+        mime: opts.mime,
+        url: opts.url?.startsWith("http") ? opts.url : undefined,
+      });
+      if (data.status !== "failure" && !data.error) {
+        verdict = evaluateSightengine(data);
+      } else {
+        verdict = await checkWithNsfwJs(buffer);
+      }
+    } else {
+      verdict = await checkWithNsfwJs(buffer);
     }
 
-    const verdict = evaluateSightengine(data);
     if (!verdict.block) return { ok: true };
 
     if (verdict.critical) {
@@ -205,24 +265,26 @@ export async function moderateImage(opts: {
         "This image was blocked by Pulse safety checks and was not uploaded.",
       banRequest: verdict.critical,
     };
-  } catch {
+  } catch (err) {
+    console.error("image moderation failed", err);
+    // Fail closed for uploads we could read — safer than letting porn through on model errors.
     return {
       ok: false,
-      error: "Safety check failed. Try again in a moment.",
+      error: "Could not verify this image. Try another photo.",
     };
   }
 }
 
 export async function moderateImageUrl(userId: string, url: string) {
-  if (!url || url.startsWith("data:")) {
-    // data URLs: decode and scan if image
-    if (url.startsWith("data:image/")) {
-      const base64 = url.split(",")[1];
-      if (!base64) return { ok: true as const };
-      const buffer = Buffer.from(base64, "base64");
-      return moderateImage({ userId, buffer, mime: "image/jpeg" });
-    }
-    return { ok: true as const };
+  if (!url) return { ok: true as const };
+  if (url.startsWith("data:image/")) {
+    const base64 = url.split(",")[1];
+    if (!base64) return { ok: true as const };
+    return moderateImage({
+      userId,
+      buffer: Buffer.from(base64, "base64"),
+      mime: "image/jpeg",
+    });
   }
-  return moderateImage({ userId, url });
+  return moderateImage({ userId, url, mime: "image/jpeg" });
 }

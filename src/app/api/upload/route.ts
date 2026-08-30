@@ -7,6 +7,8 @@ import crypto from "crypto";
 import { authOptions } from "@/lib/auth";
 import { moderateImage } from "@/lib/moderate-image";
 
+export const maxDuration = 60;
+
 // Vercel serverless body limit is ~4.5MB on hobby; keep headroom.
 const MAX_BYTES = 4 * 1024 * 1024;
 
