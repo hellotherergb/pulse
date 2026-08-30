@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/session";
+import { requireUser, revalidateUser } from "@/lib/session";
 import { getCosmetic, type CosmeticSlot } from "@/lib/cosmetics";
 
 const SLOT_FIELD: Record<CosmeticSlot, "equippedFrame" | "equippedBadge" | "equippedTitle" | "equippedBg"> = {
@@ -45,9 +45,9 @@ export async function buyCosmeticAction(itemId: string) {
     });
   });
 
+  revalidateUser(user.id);
   revalidatePath("/app/shop");
   revalidatePath("/app/wallet");
-  revalidatePath("/app", "layout");
   return { ok: true };
 }
 
@@ -83,6 +83,7 @@ export async function buyStickerPackAction(packId: string) {
     });
   });
 
+  revalidateUser(user.id);
   revalidatePath("/app/shop");
   revalidatePath("/app/wallet");
   return { ok: true };
@@ -106,7 +107,7 @@ export async function equipCosmeticAction(itemId: string) {
     data: { [field]: currentlyEquipped ? "" : itemId },
   });
 
+  revalidateUser(user.id);
   revalidatePath("/app/shop");
-  revalidatePath("/app", "layout");
   return { ok: true, equipped: !currentlyEquipped };
 }

@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/session";
+import { requireUser, revalidateUser } from "@/lib/session";
 import { isAllowedMediaUrl } from "@/lib/media";
 
 const signupSchema = z.object({
@@ -69,6 +69,7 @@ export async function updateAvatarAction(url: string) {
     data: { avatarUrl: url },
   });
 
+  revalidateUser(user.id);
   // Revalidate profile only — refreshing the whole /app layout remounts every
   // avatar in the feed and looks like the PFP is glitching.
   revalidatePath("/app/profile");
@@ -185,9 +186,6 @@ export async function toggleFollowAction(targetUserId: string) {
 
   if (existing) {
     await prisma.follow.delete({ where: { id: existing.id } });
-    revalidatePath("/app");
-    revalidatePath("/app/wallet");
-    revalidatePath("/app/u", "layout");
     return { following: false };
   }
 
@@ -209,9 +207,6 @@ export async function toggleFollowAction(targetUserId: string) {
     });
   });
 
-  revalidatePath("/app");
-  revalidatePath("/app/wallet");
-  revalidatePath("/app/u", "layout");
   return { following: true };
 }
 

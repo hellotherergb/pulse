@@ -1,31 +1,76 @@
+import { Suspense } from "react";
 import { StoriesRail } from "@/components/stories-rail";
 import { PostCard } from "@/components/post-card";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import AppLoading from "./loading";
 
-export default async function HomeFeedPage() {
+const authorSelect = {
+  id: true,
+  name: true,
+  handle: true,
+  avatarUrl: true,
+  equippedFrame: true,
+  equippedBadge: true,
+  equippedTitle: true,
+} as const;
+
+async function HomeFeed() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const [posts, stories, likes, follows] = await Promise.all([
+  const [posts, stories] = await Promise.all([
     prisma.post.findMany({
-      include: { author: true },
+      select: {
+        id: true,
+        type: true,
+        body: true,
+        mediaUrl: true,
+        viewsCount: true,
+        likesCount: true,
+        createdAt: true,
+        authorId: true,
+        author: { select: authorSelect },
+      },
       orderBy: { createdAt: "desc" },
-      take: 40,
+      take: 20,
     }),
     prisma.story.findMany({
       where: { expiresAt: { gt: new Date() } },
-      include: { author: true },
+      select: {
+        id: true,
+        mediaUrl: true,
+        caption: true,
+        author: {
+          select: {
+            id: true,
+            name: true,
+            handle: true,
+            avatarUrl: true,
+          },
+        },
+      },
       orderBy: { createdAt: "desc" },
+      take: 24,
     }),
-    prisma.like.findMany({
-      where: { userId: user.id },
-      select: { postId: true },
-    }),
-    prisma.follow.findMany({
-      where: { followerId: user.id },
-      select: { followingId: true },
-    }),
+  ]);
+
+  const postIds = posts.map((p) => p.id);
+  const authorIds = [...new Set(posts.map((p) => p.authorId))];
+
+  const [likes, follows] = await Promise.all([
+    postIds.length
+      ? prisma.like.findMany({
+          where: { userId: user.id, postId: { in: postIds } },
+          select: { postId: true },
+        })
+      : Promise.resolve([]),
+    authorIds.length
+      ? prisma.follow.findMany({
+          where: { followerId: user.id, followingId: { in: authorIds } },
+          select: { followingId: true },
+        })
+      : Promise.resolve([]),
   ]);
 
   const likedSet = new Set(likes.map((l) => l.postId));
@@ -38,12 +83,7 @@ export default async function HomeFeedPage() {
           id: s.id,
           mediaUrl: s.mediaUrl,
           caption: s.caption,
-          author: {
-            id: s.author.id,
-            name: s.author.name,
-            handle: s.author.handle,
-            avatarUrl: s.author.avatarUrl,
-          },
+          author: s.author,
         }))}
       />
 
@@ -63,15 +103,7 @@ export default async function HomeFeedPage() {
               viewsCount: post.viewsCount,
               likesCount: post.likesCount,
               createdAt: post.createdAt,
-              author: {
-                id: post.author.id,
-                name: post.author.name,
-                handle: post.author.handle,
-                avatarUrl: post.author.avatarUrl,
-                equippedFrame: post.author.equippedFrame,
-                equippedBadge: post.author.equippedBadge,
-                equippedTitle: post.author.equippedTitle,
-              },
+              author: post.author,
             }}
             liked={likedSet.has(post.id)}
             following={followingSet.has(post.authorId)}
@@ -80,5 +112,13 @@ export default async function HomeFeedPage() {
         ))
       )}
     </div>
+  );
+}
+
+export default function HomeFeedPage() {
+  return (
+    <Suspense fallback={<AppLoading />}>
+      <HomeFeed />
+    </Suspense>
   );
 }

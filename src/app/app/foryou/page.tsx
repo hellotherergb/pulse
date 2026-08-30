@@ -1,26 +1,58 @@
+import { Suspense } from "react";
 import { ForYouFeed } from "@/components/for-you-feed";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 
-export default async function ForYouPage() {
+function ClipsSkeleton() {
+  return (
+    <div className="flex h-[70dvh] animate-pulse items-center justify-center bg-ink-2 text-sm text-muted">
+      Loading clips…
+    </div>
+  );
+}
+
+async function ForYouContent() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const [clips, likes, follows] = await Promise.all([
-    prisma.post.findMany({
-      where: { type: "CLIP", mediaUrl: { not: "" } },
-      include: { author: true },
-      orderBy: { createdAt: "desc" },
-      take: 30,
-    }),
-    prisma.like.findMany({
-      where: { userId: user.id },
-      select: { postId: true },
-    }),
-    prisma.follow.findMany({
-      where: { followerId: user.id },
-      select: { followingId: true },
-    }),
+  const clips = await prisma.post.findMany({
+    where: { type: "CLIP", mediaUrl: { not: "" } },
+    select: {
+      id: true,
+      body: true,
+      mediaUrl: true,
+      likesCount: true,
+      viewsCount: true,
+      authorId: true,
+      author: {
+        select: {
+          id: true,
+          name: true,
+          handle: true,
+          avatarUrl: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 18,
+  });
+
+  const postIds = clips.map((c) => c.id);
+  const authorIds = [...new Set(clips.map((c) => c.authorId))];
+
+  const [likes, follows] = await Promise.all([
+    postIds.length
+      ? prisma.like.findMany({
+          where: { userId: user.id, postId: { in: postIds } },
+          select: { postId: true },
+        })
+      : Promise.resolve([]),
+    authorIds.length
+      ? prisma.follow.findMany({
+          where: { followerId: user.id, followingId: { in: authorIds } },
+          select: { followingId: true },
+        })
+      : Promise.resolve([]),
   ]);
 
   const likedSet = new Set(likes.map((l) => l.postId));
@@ -34,16 +66,19 @@ export default async function ForYouPage() {
         mediaUrl: c.mediaUrl,
         likesCount: c.likesCount,
         viewsCount: c.viewsCount,
-        author: {
-          id: c.author.id,
-          name: c.author.name,
-          handle: c.author.handle,
-          avatarUrl: c.author.avatarUrl,
-        },
+        author: c.author,
         liked: likedSet.has(c.id),
         following: followingSet.has(c.authorId),
         isOwn: c.authorId === user.id,
       }))}
     />
+  );
+}
+
+export default function ForYouPage() {
+  return (
+    <Suspense fallback={<ClipsSkeleton />}>
+      <ForYouContent />
+    </Suspense>
   );
 }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const tabs = [
   { href: "/app", label: "Home", icon: HomeIcon },
@@ -13,32 +14,58 @@ const tabs = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
 
   return (
-    <nav className="fixed bottom-0 left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 border-t border-line bg-ink/90 backdrop-blur-xl">
-      <ul className="grid grid-cols-5 px-1 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-2">
-        {tabs.map((tab) => {
-          const active =
-            tab.href === "/app"
-              ? pathname === "/app"
-              : pathname.startsWith(tab.href);
-          const Icon = tab.icon;
-          return (
-            <li key={tab.href}>
-              <Link
-                href={tab.href}
-                className={`flex flex-col items-center gap-0.5 py-1 text-[10px] font-medium transition ${
-                  active ? "text-mint" : "text-muted hover:text-warm"
-                }`}
-              >
-                <Icon active={active} />
-                {tab.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
+    <>
+      {pendingHref ? (
+        <div className="pointer-events-none fixed left-1/2 top-0 z-50 h-0.5 w-full max-w-[430px] -translate-x-1/2 overflow-hidden">
+          <div className="nav-progress h-full w-full bg-mint" />
+        </div>
+      ) : null}
+      <nav className="fixed bottom-0 left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 border-t border-line bg-ink/90 backdrop-blur-xl">
+        <ul className="grid grid-cols-5 px-1 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-2">
+          {tabs.map((tab) => {
+            const active = pendingHref
+              ? pendingHref === tab.href ||
+                (tab.href !== "/app" && pendingHref.startsWith(tab.href))
+              : tab.href === "/app"
+                ? pathname === "/app"
+                : pathname.startsWith(tab.href);
+            const Icon = tab.icon;
+            return (
+              <li key={tab.href}>
+                <Link
+                  href={tab.href}
+                  prefetch
+                  onClick={(e) => {
+                    if (
+                      tab.href === "/app"
+                        ? pathname === "/app"
+                        : pathname.startsWith(tab.href)
+                    ) {
+                      return;
+                    }
+                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                    setPendingHref(tab.href);
+                  }}
+                  className={`flex flex-col items-center gap-0.5 py-1 text-[10px] font-medium transition ${
+                    active ? "text-mint" : "text-muted hover:text-warm"
+                  }`}
+                >
+                  <Icon active={active} />
+                  {tab.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+    </>
   );
 }
 

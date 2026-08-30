@@ -3,7 +3,7 @@
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/session";
+import { requireUser, revalidateUser } from "@/lib/session";
 import {
   isValidPixelIndex,
   normalizeColor,
@@ -107,9 +107,9 @@ export async function buyPixelAction(input: {
       return created;
     });
 
+    revalidateUser(user.id);
     revalidatePath("/app/map");
     revalidatePath("/app/wallet");
-    revalidatePath("/app", "layout");
     return { ok: true as const, pixel: toPublic(pixel) };
   } catch (err) {
     if (err instanceof Error && err.message === "INSUFFICIENT") {
