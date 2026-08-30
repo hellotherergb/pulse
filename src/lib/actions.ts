@@ -166,8 +166,7 @@ export async function toggleLikeAction(postId: string) {
     ]);
   }
 
-  revalidatePath("/app");
-  revalidatePath("/app/foryou");
+  // Client updates optimistically — full feed revalidate feels laggy.
   return { liked: !existing };
 }
 

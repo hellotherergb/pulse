@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { createPostAction, createStoryAction } from "@/lib/actions";
+import { compressImageFile } from "@/lib/compress-image";
 
 export function CreateForm({ defaultTab = "post" }: { defaultTab?: string }) {
   const router = useRouter();
@@ -10,15 +11,29 @@ export function CreateForm({ defaultTab = "post" }: { defaultTab?: string }) {
   const [type, setType] = useState<"TEXT" | "IMAGE" | "CLIP">("TEXT");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const lockRef = useRef(false);
   const postFileRef = useRef<HTMLInputElement>(null);
   const storyFileRef = useRef<HTMLInputElement>(null);
 
-  async function uploadIfNeeded(fileInput: HTMLInputElement | null): Promise<
-    { url: string } | { error: string } | null
-  > {
-    const file = fileInput?.files?.[0];
-    if (!file) return null;
+  async function prepareFile(file: File): Promise<File> {
+    if (!file.type.startsWith("image/") || file.type === "image/gif") {
+      return file;
+    }
+    const blob = await compressImageFile(file, { maxSize: 1600, quality: 0.82 });
+    return new File([blob], file.name.replace(/\.\w+$/, ".jpg") || "photo.jpg", {
+      type: "image/jpeg",
+    });
+  }
+
+  async function uploadIfNeeded(
+    fileInput: HTMLInputElement | null,
+  ): Promise<{ url: string } | { error: string } | null> {
+    const raw = fileInput?.files?.[0];
+    if (!raw) return null;
+    setStatus("Uploading…");
+    const file = await prepareFile(raw);
     const fd = new FormData();
     fd.append("file", file);
     const res = await fetch("/api/upload", { method: "POST", body: fd });
@@ -27,54 +42,84 @@ export function CreateForm({ defaultTab = "post" }: { defaultTab?: string }) {
     return { url: data.url };
   }
 
-  async function onPost(formData: FormData) {
+  function beginSubmit(): boolean {
+    if (lockRef.current) return false;
+    lockRef.current = true;
     setPending(true);
     setError(null);
+    setStatus(null);
+    return true;
+  }
 
-    if (type !== "TEXT") {
-      const uploaded = await uploadIfNeeded(postFileRef.current);
+  function fail(message: string) {
+    setError(message);
+    setStatus(null);
+    setPending(false);
+    lockRef.current = false;
+  }
+
+  async function onPost(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!beginSubmit()) return;
+
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
+    try {
+      if (type !== "TEXT") {
+        const uploaded = await uploadIfNeeded(postFileRef.current);
+        if (uploaded && "error" in uploaded) {
+          fail(uploaded.error);
+          return;
+        }
+        if (uploaded) {
+          formData.set("mediaUrl", uploaded.url);
+        }
+      }
+
+      setStatus("Posting…");
+      const res = await createPostAction(formData);
+      if (res?.error) {
+        fail(res.error);
+        return;
+      }
+
+      setStatus("Done");
+      router.replace("/app");
+    } catch {
+      fail("Something went wrong. Try again.");
+    }
+  }
+
+  async function onStory(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!beginSubmit()) return;
+
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
+    try {
+      const uploaded = await uploadIfNeeded(storyFileRef.current);
       if (uploaded && "error" in uploaded) {
-        setError(uploaded.error);
-        setPending(false);
+        fail(uploaded.error);
         return;
       }
       if (uploaded) {
         formData.set("mediaUrl", uploaded.url);
       }
-    }
 
-    const res = await createPostAction(formData);
-    if (res?.error) {
-      setError(res.error);
-      setPending(false);
-      return;
-    }
-    router.push("/app");
-    router.refresh();
-  }
+      setStatus("Sharing…");
+      const res = await createStoryAction(formData);
+      if (res?.error) {
+        fail(res.error);
+        return;
+      }
 
-  async function onStory(formData: FormData) {
-    setPending(true);
-    setError(null);
-
-    const uploaded = await uploadIfNeeded(storyFileRef.current);
-    if (uploaded && "error" in uploaded) {
-      setError(uploaded.error);
-      setPending(false);
-      return;
+      setStatus("Done");
+      router.replace("/app");
+    } catch {
+      fail("Something went wrong. Try again.");
     }
-    if (uploaded) {
-      formData.set("mediaUrl", uploaded.url);
-    }
-
-    const res = await createStoryAction(formData);
-    if (res?.error) {
-      setError(res.error);
-      setPending(false);
-      return;
-    }
-    router.push("/app");
-    router.refresh();
   }
 
   return (
@@ -84,8 +129,14 @@ export function CreateForm({ defaultTab = "post" }: { defaultTab?: string }) {
           <button
             key={t}
             type="button"
-            onClick={() => setTab(t)}
-            className={`flex-1 rounded-full py-2 text-sm font-semibold capitalize ${
+            disabled={pending}
+            onClick={() => {
+              if (pending) return;
+              setTab(t);
+              setFileName(null);
+              setError(null);
+            }}
+            className={`flex-1 rounded-full py-2 text-sm font-semibold capitalize disabled:opacity-50 ${
               tab === t ? "bg-mint text-ink" : "text-muted"
             }`}
           >
@@ -101,7 +152,11 @@ export function CreateForm({ defaultTab = "post" }: { defaultTab?: string }) {
       )}
 
       {tab === "post" ? (
-        <form action={onPost} className="space-y-4">
+        <form
+          onSubmit={onPost}
+          className={`space-y-4 ${pending ? "pointer-events-none opacity-80" : ""}`}
+          aria-busy={pending}
+        >
           <div className="flex gap-2">
             {(["TEXT", "IMAGE", "CLIP"] as const).map((t) => (
               <button
@@ -162,13 +217,17 @@ export function CreateForm({ defaultTab = "post" }: { defaultTab?: string }) {
           <button
             type="submit"
             disabled={pending}
-            className="w-full rounded-2xl bg-mint py-3 font-display text-base font-700 text-ink transition hover:bg-mint-dim disabled:opacity-60"
+            className="w-full rounded-2xl bg-mint py-3 font-display text-base font-700 text-ink transition hover:bg-mint-dim disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {pending ? "Posting…" : "Post to Pulse"}
+            {pending ? status ?? "Posting…" : "Post to Pulse"}
           </button>
         </form>
       ) : (
-        <form action={onStory} className="space-y-4">
+        <form
+          onSubmit={onStory}
+          className={`space-y-4 ${pending ? "pointer-events-none opacity-80" : ""}`}
+          aria-busy={pending}
+        >
           <input
             ref={storyFileRef}
             type="file"
@@ -202,9 +261,9 @@ export function CreateForm({ defaultTab = "post" }: { defaultTab?: string }) {
           <button
             type="submit"
             disabled={pending}
-            className="w-full rounded-2xl bg-mint py-3 font-display text-base font-700 text-ink transition hover:bg-mint-dim disabled:opacity-60"
+            className="w-full rounded-2xl bg-mint py-3 font-display text-base font-700 text-ink transition hover:bg-mint-dim disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {pending ? "Sharing…" : "Share story"}
+            {pending ? status ?? "Sharing…" : "Share story"}
           </button>
         </form>
       )}
