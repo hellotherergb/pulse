@@ -248,7 +248,7 @@ export async function deleteOwnPostAction(postId: string) {
   return { ok: true as const };
 }
 
-export async function reportPostAction(postId: string) {
+export async function reportPostAction(postId: string, note = "") {
   const user = await requireUser();
   const post = await prisma.post.findUnique({
     where: { id: postId },
@@ -262,6 +262,30 @@ export async function reportPostAction(postId: string) {
     text: post.body || `(${post.type} post)`,
     source: "REPORT",
     sourceId: post.id,
+    note,
+  });
+}
+
+export async function reportUserAction(userId: string, note: string) {
+  const user = await requireUser();
+  const trimmed = note.trim();
+  if (trimmed.length < 3) {
+    return { error: "Please add a short note explaining the report" };
+  }
+
+  const target = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, handle: true },
+  });
+  if (!target) return { error: "User not found" };
+
+  return createUserReport({
+    reporterId: user.id,
+    targetUserId: target.id,
+    text: `Reported profile @${target.handle}`,
+    source: "REPORT",
+    sourceId: target.id,
+    note: trimmed,
   });
 }
 

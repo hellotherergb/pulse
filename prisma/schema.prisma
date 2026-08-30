@@ -42,23 +42,28 @@ model User {
   auctionBids    Bid[]
   leadingAuctions Auction[]      @relation("AuctionLeader")
   banRequests    BanRequest[]
+  reportsFiled   BanRequest[] @relation("ReportsFiled")
 }
 
-/// Flagged content awaiting admin ban decision (e.g. child-sexual exploitation).
+/// Flagged content / community report awaiting admin ban decision.
 model BanRequest {
-  id        String   @id @default(cuid())
-  userId    String
-  reason    String
-  snippet   String   @default("") @db.VarChar(280)
-  source    String // POST | STORY | MESSAGE | PIXEL | BIO
-  sourceId  String   @default("")
-  status    String   @default("PENDING") // PENDING | BANNED | DISMISSED
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String
+  reporterId String?
+  reason     String
+  note       String   @default("") @db.VarChar(500)
+  snippet    String   @default("") @db.VarChar(280)
+  source     String // POST | STORY | MESSAGE | PIXEL | BIO | REPORT
+  sourceId   String   @default("")
+  status     String   @default("PENDING") // PENDING | BANNED | DISMISSED
+  createdAt  DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reporter User? @relation("ReportsFiled", fields: [reporterId], references: [id], onDelete: SetNull)
 
   @@index([status, createdAt])
   @@index([userId])
+  @@index([reporterId])
 }
 
 model MapPixel {

@@ -8,8 +8,8 @@ import {
   toggleLikeAction,
   toggleFollowAction,
   deleteOwnPostAction,
-  reportPostAction,
 } from "@/lib/actions";
+import { ReportPostButton } from "./report-user";
 
 type Clip = {
   id: string;
@@ -118,7 +118,10 @@ export function ForYouFeed({ clips }: { clips: Clip[] }) {
         {clip.isOwn ? (
           <ClipDelete postId={clip.id} />
         ) : (
-          <ClipFollow userId={clip.author.id} following={clip.following} />
+          <>
+            <ClipFollow userId={clip.author.id} following={clip.following} />
+            <ReportPostButton postId={clip.id} variant="clip" />
+          </>
         )}
         <ClipLike postId={clip.id} liked={clip.liked} count={clip.likesCount} />
         <div className="text-center text-xs text-white/70">

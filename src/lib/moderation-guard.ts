@@ -20,7 +20,6 @@ export async function blockIfViolatesPolicy(opts: {
   const hit = scanUserContent(opts.text);
   if (!hit) return null;
 
-  // Don't spam duplicate pending requests for the same user+reason in a short window.
   const recent = await prisma.banRequest.findFirst({
     where: {
       userId: opts.userId,
@@ -46,7 +45,7 @@ export async function blockIfViolatesPolicy(opts: {
   return "This content violates Pulse safety rules and was reported to admins.";
 }
 
-/** Community report → always creates a PENDING ban request for admin review. */
+/** Community report → PENDING ban request for admin review (with optional note). */
 export async function createUserReport(opts: {
   reporterId: string;
   targetUserId: string;
@@ -59,9 +58,19 @@ export async function createUserReport(opts: {
     return { error: "You can't report yourself" };
   }
 
+  const target = await prisma.user.findUnique({
+    where: { id: opts.targetUserId },
+    select: { id: true, isAdmin: true },
+  });
+  if (!target) return { error: "User not found" };
+  if (target.isAdmin) return { error: "You can't report an admin" };
+
+  const note = opts.note?.trim().slice(0, 500) ?? "";
+
   const recent = await prisma.banRequest.findFirst({
     where: {
       userId: opts.targetUserId,
+      reporterId: opts.reporterId,
       source: "REPORT",
       sourceId: opts.sourceId ?? "",
       status: "PENDING",
@@ -71,12 +80,13 @@ export async function createUserReport(opts: {
   });
   if (recent) return { ok: true };
 
-  const note = opts.note?.trim() ? ` Reporter note: ${opts.note.trim()}` : "";
   await prisma.banRequest.create({
     data: {
       userId: opts.targetUserId,
+      reporterId: opts.reporterId,
       reason: "User report — review for safety",
-      snippet: snippetForAdmin(`${opts.text}${note}`),
+      note,
+      snippet: snippetForAdmin(opts.text || note || "User report"),
       source: "REPORT",
       sourceId: opts.sourceId ?? "",
     },
@@ -84,4 +94,3 @@ export async function createUserReport(opts: {
 
   return { ok: true };
 }
-

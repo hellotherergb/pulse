@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { FollowButton } from "@/components/action-buttons";
 import { MessageButton } from "@/components/message-button";
+import { ReportUserButton } from "@/components/report-user";
 import { Avatar, NameWithBadge } from "@/components/avatar";
 import { OwnPostTile } from "@/components/own-post-tile";
 import { getCosmetic } from "@/lib/cosmetics";
@@ -67,9 +68,10 @@ export default async function UserProfilePage({
           </div>
         </div>
         {!isOwn && (
-          <div className="mt-4 flex gap-2">
+          <div className="mt-4 flex flex-wrap gap-2">
             <FollowButton userId={profile.id} following={Boolean(isFollowing)} />
             <MessageButton handle={profile.handle} />
+            <ReportUserButton userId={profile.id} handle={profile.handle} />
           </div>
         )}
       </div>

@@ -103,9 +103,44 @@ export default async function AdminPage() {
             banned: true,
           },
         },
+        reporter: {
+          select: { handle: true, name: true },
+        },
       },
     }),
   ]);
+
+  const reportedIds = [...new Set(banRequests.map((r) => r.userId))];
+  const chatRows =
+    reportedIds.length === 0
+      ? []
+      : await prisma.message.findMany({
+          where: { senderId: { in: reportedIds } },
+          orderBy: { createdAt: "desc" },
+          take: 300,
+          select: {
+            id: true,
+            body: true,
+            kind: true,
+            createdAt: true,
+            senderId: true,
+            conversation: {
+              select: {
+                userA: { select: { handle: true } },
+                userB: { select: { handle: true } },
+              },
+            },
+          },
+        });
+
+  const chatsByUser = new Map<string, typeof chatRows>();
+  for (const row of chatRows) {
+    const list = chatsByUser.get(row.senderId) ?? [];
+    if (list.length < 40) {
+      list.push(row);
+      chatsByUser.set(row.senderId, list);
+    }
+  }
 
   return (
     <main className="space-y-8 px-4 py-5">
@@ -133,8 +168,8 @@ export default async function AdminPage() {
           ) : null}
         </h2>
         <p className="text-xs text-muted">
-          Auto-flagged child-sexual / exploitation language. Content was blocked
-          from posting. Approve to ban the user, or dismiss if it was a false alarm.
+          Community reports (with notes) and auto-flags. Review the user’s recent
+          chats below, then ban or dismiss.
         </p>
         {banRequests.length === 0 ? (
           <p className="rounded-2xl border border-line bg-ink-2/50 px-3 py-4 text-sm text-muted">
@@ -142,7 +177,9 @@ export default async function AdminPage() {
           </p>
         ) : (
           <div className="space-y-3">
-            {banRequests.map((r) => (
+            {banRequests.map((r) => {
+              const chats = chatsByUser.get(r.userId) ?? [];
+              return (
               <article
                 key={r.id}
                 className="rounded-2xl border border-danger/35 bg-danger/5 p-3"
@@ -159,10 +196,61 @@ export default async function AdminPage() {
                     {r.source} · {r.createdAt.toLocaleString()}
                   </p>
                 </div>
+                {r.reporter ? (
+                  <p className="mt-1 text-xs text-muted">
+                    Reported by @{r.reporter.handle}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-muted">Auto-flagged by safety filter</p>
+                )}
                 <p className="mt-1 text-sm font-semibold text-danger">{r.reason}</p>
+                {r.note ? (
+                  <div className="mt-2">
+                    <p className="text-[10px] uppercase tracking-wide text-muted">
+                      Reporter note
+                    </p>
+                    <p className="mt-1 whitespace-pre-wrap rounded-xl border border-mint/25 bg-mint/5 px-3 py-2 text-xs text-warm/95">
+                      {r.note}
+                    </p>
+                  </div>
+                ) : null}
                 <p className="mt-2 whitespace-pre-wrap rounded-xl border border-line bg-ink-2 px-3 py-2 text-xs text-warm/90">
                   {r.snippet || "(empty)"}
                 </p>
+
+                <div className="mt-3">
+                  <p className="text-[10px] uppercase tracking-wide text-muted">
+                    Recent chat messages from @{r.user.handle}
+                  </p>
+                  {chats.length === 0 ? (
+                    <p className="mt-1 text-xs text-muted">No DMs found for this user.</p>
+                  ) : (
+                    <ul className="mt-2 max-h-48 space-y-1.5 overflow-y-auto rounded-xl border border-line bg-ink-2 p-2">
+                      {chats.map((m) => {
+                        const other =
+                          m.conversation.userA.handle === r.user.handle
+                            ? m.conversation.userB.handle
+                            : m.conversation.userA.handle;
+                        return (
+                          <li
+                            key={m.id}
+                            className="rounded-lg border border-line/60 bg-ink/40 px-2 py-1.5 text-[11px] leading-snug text-warm/90"
+                          >
+                            <span className="text-muted">
+                              → @{other} · {m.kind} ·{" "}
+                              {m.createdAt.toLocaleString()}
+                            </span>
+                            <p className="mt-0.5 whitespace-pre-wrap break-words">
+                              {m.body.slice(0, 400)}
+                              {m.body.length > 400 ? "…" : ""}
+                            </p>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+
                 <div className="mt-3 flex flex-wrap gap-2">
                   <AdminForm action={adminApproveBanRequestAction}>
                     <input type="hidden" name="requestId" value={r.id} />
@@ -182,9 +270,16 @@ export default async function AdminPage() {
                       Dismiss
                     </button>
                   </AdminForm>
+                  <Link
+                    href={`/app/u/${r.user.handle}`}
+                    className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-mint"
+                  >
+                    View profile
+                  </Link>
                 </div>
               </article>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
