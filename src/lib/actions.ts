@@ -6,7 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUser, revalidateUser } from "@/lib/session";
 import { isAllowedMediaUrl } from "@/lib/media";
-import { blockIfViolatesPolicy } from "@/lib/moderation-guard";
+import { blockIfViolatesPolicy, createUserReport } from "@/lib/moderation-guard";
 
 const signupSchema = z.object({
   name: z.string().min(2).max(40),
@@ -237,6 +237,23 @@ export async function deleteOwnPostAction(postId: string) {
   revalidatePath("/app/profile");
   revalidatePath(`/app/u/${user.handle}`);
   return { ok: true as const };
+}
+
+export async function reportPostAction(postId: string) {
+  const user = await requireUser();
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: { id: true, authorId: true, body: true, type: true },
+  });
+  if (!post) return { error: "Post not found" };
+
+  return createUserReport({
+    reporterId: user.id,
+    targetUserId: post.authorId,
+    text: post.body || `(${post.type} post)`,
+    source: "REPORT",
+    sourceId: post.id,
+  });
 }
 
 export async function recordViewAction(postId: string) {

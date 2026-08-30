@@ -8,6 +8,7 @@ import {
   toggleLikeAction,
   toggleFollowAction,
   deleteOwnPostAction,
+  reportPostAction,
 } from "@/lib/actions";
 
 type Clip = {

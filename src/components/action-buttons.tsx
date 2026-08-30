@@ -6,6 +6,7 @@ import {
   toggleLikeAction,
   toggleFollowAction,
   deleteOwnPostAction,
+  reportPostAction,
 } from "@/lib/actions";
 
 export function LikeButton({
@@ -125,6 +126,66 @@ export function DeletePostButton({
       }
     >
       {pending ? "Deleting…" : "Delete"}
+    </button>
+  );
+}
+
+export function ReportButton({
+  postId,
+  variant = "feed",
+}: {
+  postId: string;
+  variant?: "feed" | "clip";
+}) {
+  const [pending, start] = useTransition();
+  const [done, setDone] = useState(false);
+  const lock = useRef(false);
+
+  if (done) {
+    return (
+      <span
+        className={
+          variant === "clip"
+            ? "text-[10px] font-semibold text-white/70"
+            : "text-xs text-muted"
+        }
+      >
+        Reported
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() => {
+        if (lock.current) return;
+        if (
+          !window.confirm(
+            "Report this for safety review? Admins will get a ban request.",
+          )
+        ) {
+          return;
+        }
+        lock.current = true;
+        start(async () => {
+          const res = await reportPostAction(postId);
+          if (res && "error" in res && res.error) {
+            lock.current = false;
+            window.alert(res.error);
+            return;
+          }
+          setDone(true);
+        });
+      }}
+      className={
+        variant === "clip"
+          ? "rounded-full border border-white/30 bg-black/40 px-3 py-1.5 text-xs font-semibold text-white/90 backdrop-blur disabled:opacity-50"
+          : "text-xs font-semibold text-muted transition hover:text-danger disabled:opacity-50"
+      }
+    >
+      {pending ? "…" : "Report"}
     </button>
   );
 }

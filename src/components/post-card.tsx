@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LikeButton, FollowButton, DeletePostButton } from "./action-buttons";
+import { LikeButton, FollowButton, DeletePostButton, ReportButton } from "./action-buttons";
 import { ViewTracker } from "./view-tracker";
 import { Avatar, NameWithBadge } from "./avatar";
 
