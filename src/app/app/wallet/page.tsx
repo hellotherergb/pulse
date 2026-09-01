@@ -4,7 +4,7 @@ import { BuySparks } from "@/components/buy-sparks";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { SPARK_PACKS } from "@/lib/spark-packs";
-import { stripeConfigured } from "@/lib/stripe";
+import { isStripeTestMode, stripeConfigured } from "@/lib/stripe";
 
 function txLabel(reason: string) {
   switch (reason) {
@@ -72,7 +72,12 @@ export default async function WalletPage() {
       </div>
 
       <Suspense fallback={null}>
-        <BuySparks packs={SPARK_PACKS} paymentsReady={stripeConfigured()} />
+        <BuySparks
+          packs={SPARK_PACKS}
+          paymentsReady={stripeConfigured()}
+          testMode={isStripeTestMode()}
+          isAdmin={user.isAdmin}
+        />
       </Suspense>
 
       <div className="mt-8 space-y-3 rounded-2xl border border-line bg-ink-2 p-4 text-sm">

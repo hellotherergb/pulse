@@ -3,6 +3,7 @@
 import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
+import { requireAdmin } from "@/lib/admin";
 import { getSparkPack } from "@/lib/spark-packs";
 import { fulfillSparkOrder } from "@/lib/spark-fulfill";
 import { getStripe, siteUrl, stripeConfigured } from "@/lib/stripe";
@@ -12,7 +13,7 @@ export async function startSparkCheckoutAction(packId: string) {
   if (!stripeConfigured()) {
     return {
       error:
-        "Payments are not set up yet. Ask an admin to connect Stripe (bank payouts — never paste card numbers into Pulse).",
+        "Stripe test keys are not set yet. Admin can use “Demo buy”, or add STRIPE_SECRET_KEY (sk_test_…).",
     };
   }
 
@@ -101,4 +102,27 @@ export async function confirmSparkCheckoutAction(sessionId: string) {
   } catch {
     return { error: "Could not confirm payment" };
   }
+}
+
+/** Admin-only fake purchase (no Stripe) for trying the wallet before test keys. */
+export async function demoSparkBuyAction(packId: string) {
+  await requireAdmin();
+  const user = await requireUser();
+  const pack = getSparkPack(packId) ?? getSparkPack("pack_100");
+  if (!pack) return { error: "Unknown pack" };
+
+  const sessionId = `demo_${randomUUID()}`;
+  await prisma.sparkOrder.create({
+    data: {
+      userId: user.id,
+      packId: pack.id,
+      sparks: pack.sparks,
+      amountAgorot: pack.amountAgorot,
+      currency: "ils",
+      stripeSessionId: sessionId,
+      status: "PENDING",
+    },
+  });
+
+  return fulfillSparkOrder(sessionId);
 }

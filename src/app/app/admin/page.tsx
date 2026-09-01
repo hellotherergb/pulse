@@ -27,7 +27,7 @@ import {
   settleExpiredAuctions,
 } from "@/lib/auction-actions";
 import { formatIls } from "@/lib/spark-packs";
-import { stripeConfigured } from "@/lib/stripe";
+import { isStripeTestMode, stripeConfigured } from "@/lib/stripe";
 
 export default async function AdminPage() {
   const me = await getCurrentUser();
@@ -173,49 +173,71 @@ export default async function AdminPage() {
         <h2 className="font-display text-lg font-semibold">Sparks sales (₪)</h2>
         <div className="rounded-2xl border border-line bg-ink-2/70 p-3 text-sm text-muted space-y-2">
           <p className="font-semibold text-warm">
-            Do not paste your debit/credit card into Pulse.
-          </p>
-          <p>
-            Buyers pay with Stripe Checkout. Money lands in{" "}
-            <strong className="text-warm">your Stripe balance</strong>, then you
-            payout to your bank from the Stripe Dashboard.
+            Try with fake cards first (Stripe TEST mode — no bank needed)
           </p>
           <ol className="list-decimal space-y-1 pl-5">
             <li>
-              Create account at{" "}
+              Free signup:{" "}
               <a
                 className="text-mint underline"
                 href="https://dashboard.stripe.com/register"
                 target="_blank"
                 rel="noreferrer"
               >
-                dashboard.stripe.com
+                dashboard.stripe.com/register
               </a>
             </li>
-            <li>Add your bank account under Stripe → Settings → Payouts / Bank accounts</li>
             <li>
-              Copy Secret key + create a webhook to{" "}
-              <code className="text-xs text-warm">
-                https://YOUR-DOMAIN/api/stripe/webhook
-              </code>{" "}
-              for event <code className="text-xs text-warm">checkout.session.completed</code>
+              Turn on <strong className="text-warm">Test mode</strong> (switch
+              in the Stripe dashboard)
             </li>
             <li>
-              Add env vars on Vercel:{" "}
-              <code className="text-xs text-warm">STRIPE_SECRET_KEY</code>,{" "}
-              <code className="text-xs text-warm">STRIPE_WEBHOOK_SECRET</code>
+              Copy the <strong className="text-warm">Secret key</strong>{" "}
+              (<code className="text-xs text-warm">sk_test_…</code>) from{" "}
+              <a
+                className="text-mint underline"
+                href="https://dashboard.stripe.com/test/apikeys"
+                target="_blank"
+                rel="noreferrer"
+              >
+                API keys
+              </a>
+            </li>
+            <li>
+              Paste it here in chat (or Vercel env as{" "}
+              <code className="text-xs text-warm">STRIPE_SECRET_KEY</code>) — I’ll
+              finish wiring
+            </li>
+            <li>
+              On Wallet, buy a pack and pay with{" "}
+              <code className="text-xs text-mint">4242 4242 4242 4242</code>
             </li>
           </ol>
+          <p className="text-xs">
+            Webhook is optional for the first test — returning from Checkout
+            credits Sparks. Add{" "}
+            <code className="text-warm">STRIPE_WEBHOOK_SECRET</code> later for
+            live reliability.
+          </p>
           <p>
             Status:{" "}
             {stripeConfigured() ? (
-              <span className="font-semibold text-mint">Stripe connected</span>
+              <span className="font-semibold text-mint">
+                Stripe connected
+                {isStripeTestMode() ? " (TEST mode)" : " (LIVE)"}
+              </span>
             ) : (
-              <span className="font-semibold text-danger">Stripe keys missing</span>
+              <span className="font-semibold text-danger">
+                No keys yet — use Wallet → Admin demo buy, or add sk_test_
+              </span>
             )}
           </p>
           <p className="text-xs">
             Packs: ₪10 → 100 Sparks · ₪25 → 300 · ₪50 → 700
+          </p>
+          <p className="text-xs text-muted">
+            Live money later: flip Stripe to live keys + add your bank under
+            Payouts. Never paste card numbers into Pulse.
           </p>
         </div>
 

@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import {
   confirmSparkCheckoutAction,
+  demoSparkBuyAction,
   startSparkCheckoutAction,
 } from "@/lib/spark-purchase";
 import { formatIls, type SparkPack } from "@/lib/spark-packs";
@@ -11,9 +12,13 @@ import { formatIls, type SparkPack } from "@/lib/spark-packs";
 export function BuySparks({
   packs,
   paymentsReady,
+  testMode,
+  isAdmin,
 }: {
   packs: SparkPack[];
   paymentsReady: boolean;
+  testMode: boolean;
+  isAdmin: boolean;
 }) {
   const router = useRouter();
   const search = useSearchParams();
@@ -54,14 +59,49 @@ export function BuySparks({
     <div className="mt-8">
       <h2 className="font-display text-lg font-600">Buy Sparks</h2>
       <p className="mt-1 text-sm text-muted">
-        Pay with a card in Israeli shekels (₪). Money goes to Pulse via Stripe —
-        we never store your card on this site.
+        Pay in Israeli shekels (₪). Card details stay on Stripe — never on Pulse.
       </p>
 
+      {paymentsReady && testMode ? (
+        <div className="mt-3 rounded-2xl border border-amber-400/40 bg-amber-400/10 px-3 py-3 text-sm text-warm">
+          <p className="font-semibold text-amber-200">Stripe TEST mode</p>
+          <p className="mt-1 text-xs text-muted">
+            Use a fake card — no real money. Card:{" "}
+            <code className="text-mint">4242 4242 4242 4242</code>
+            <br />
+            Expiry: any future date · CVC: any 3 digits · ZIP: any
+          </p>
+        </div>
+      ) : null}
+
       {!paymentsReady ? (
-        <p className="mt-3 rounded-xl border border-line bg-ink-2 px-3 py-3 text-sm text-muted">
-          Card checkout is being set up. Check back soon.
-        </p>
+        <div className="mt-3 space-y-2">
+          <p className="rounded-xl border border-line bg-ink-2 px-3 py-3 text-sm text-muted">
+            Stripe test keys are not connected yet. Until then, admins can run a
+            demo buy (no card).
+          </p>
+          {isAdmin ? (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                setError(null);
+                start(async () => {
+                  const res = await demoSparkBuyAction("pack_100");
+                  if (res && "error" in res && res.error) {
+                    setError(res.error);
+                    return;
+                  }
+                  setMessage("Demo: +100 Sparks added (no Stripe).");
+                  router.refresh();
+                });
+              }}
+              className="w-full rounded-2xl border border-mint/40 bg-mint/10 px-4 py-3 text-sm font-semibold text-mint disabled:opacity-60"
+            >
+              {pending ? "Adding…" : "Admin demo: +100 Sparks (fake, free)"}
+            </button>
+          ) : null}
+        </div>
       ) : (
         <div className="mt-3 space-y-2">
           {packs.map((pack) => (
@@ -101,15 +141,32 @@ export function BuySparks({
               </span>
             </button>
           ))}
+          {isAdmin ? (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                setError(null);
+                start(async () => {
+                  const res = await demoSparkBuyAction("pack_100");
+                  if (res && "error" in res && res.error) {
+                    setError(res.error);
+                    return;
+                  }
+                  setMessage("Demo: +100 Sparks added (no Stripe).");
+                  router.refresh();
+                });
+              }}
+              className="w-full rounded-xl border border-line px-3 py-2 text-xs font-semibold text-muted"
+            >
+              Admin demo buy (skip Stripe)
+            </button>
+          ) : null}
         </div>
       )}
 
-      {error ? (
-        <p className="mt-3 text-sm text-danger">{error}</p>
-      ) : null}
-      {message ? (
-        <p className="mt-3 text-sm text-mint">{message}</p>
-      ) : null}
+      {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
+      {message ? <p className="mt-3 text-sm text-mint">{message}</p> : null}
     </div>
   );
 }

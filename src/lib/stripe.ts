@@ -12,7 +12,13 @@ export function getStripe() {
 }
 
 export function stripeConfigured() {
-  return Boolean(process.env.STRIPE_SECRET_KEY);
+  return Boolean(process.env.STRIPE_SECRET_KEY?.trim());
+}
+
+/** True when using Stripe test keys (sk_test_…). */
+export function isStripeTestMode() {
+  const key = process.env.STRIPE_SECRET_KEY ?? "";
+  return key.startsWith("sk_test_");
 }
 
 export function siteUrl() {
