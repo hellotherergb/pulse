@@ -43,6 +43,26 @@ model User {
   leadingAuctions Auction[]      @relation("AuctionLeader")
   banRequests    BanRequest[]
   reportsFiled   BanRequest[] @relation("ReportsFiled")
+  sparkOrders    SparkOrder[]
+}
+
+/// Real-money Sparks purchase (Stripe Checkout).
+model SparkOrder {
+  id              String   @id @default(cuid())
+  userId          String
+  packId          String
+  sparks          Int
+  amountAgorot    Int // ILS minor units (₪10 = 1000)
+  currency        String   @default("ils")
+  stripeSessionId String   @unique
+  status          String   @default("PENDING") // PENDING | PAID | FAILED
+  createdAt       DateTime @default(now())
+  paidAt          DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
 }
 
 /// Flagged content / community report awaiting admin ban decision.

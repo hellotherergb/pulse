@@ -26,6 +26,8 @@ import {
   adminCancelAuctionAction,
   settleExpiredAuctions,
 } from "@/lib/auction-actions";
+import { formatIls } from "@/lib/spark-packs";
+import { stripeConfigured } from "@/lib/stripe";
 
 export default async function AdminPage() {
   const me = await getCurrentUser();
@@ -35,7 +37,7 @@ export default async function AdminPage() {
 
   await settleExpiredAuctions();
 
-  const [users, posts, conversations, emotes, openAuctions, banRequests] =
+  const [users, posts, conversations, emotes, openAuctions, banRequests, sparkOrders] =
     await Promise.all([
     prisma.user.findMany({
       orderBy: { createdAt: "desc" },
@@ -108,6 +110,13 @@ export default async function AdminPage() {
         },
       },
     }),
+    prisma.sparkOrder.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 40,
+      include: {
+        user: { select: { handle: true, name: true } },
+      },
+    }),
   ]);
 
   const reportedIds = [...new Set(banRequests.map((r) => r.userId))];
@@ -159,6 +168,88 @@ export default async function AdminPage() {
           </Link>
         </div>
       </div>
+
+      <section className="space-y-3">
+        <h2 className="font-display text-lg font-semibold">Sparks sales (₪)</h2>
+        <div className="rounded-2xl border border-line bg-ink-2/70 p-3 text-sm text-muted space-y-2">
+          <p className="font-semibold text-warm">
+            Do not paste your debit/credit card into Pulse.
+          </p>
+          <p>
+            Buyers pay with Stripe Checkout. Money lands in{" "}
+            <strong className="text-warm">your Stripe balance</strong>, then you
+            payout to your bank from the Stripe Dashboard.
+          </p>
+          <ol className="list-decimal space-y-1 pl-5">
+            <li>
+              Create account at{" "}
+              <a
+                className="text-mint underline"
+                href="https://dashboard.stripe.com/register"
+                target="_blank"
+                rel="noreferrer"
+              >
+                dashboard.stripe.com
+              </a>
+            </li>
+            <li>Add your bank account under Stripe → Settings → Payouts / Bank accounts</li>
+            <li>
+              Copy Secret key + create a webhook to{" "}
+              <code className="text-xs text-warm">
+                https://YOUR-DOMAIN/api/stripe/webhook
+              </code>{" "}
+              for event <code className="text-xs text-warm">checkout.session.completed</code>
+            </li>
+            <li>
+              Add env vars on Vercel:{" "}
+              <code className="text-xs text-warm">STRIPE_SECRET_KEY</code>,{" "}
+              <code className="text-xs text-warm">STRIPE_WEBHOOK_SECRET</code>
+            </li>
+          </ol>
+          <p>
+            Status:{" "}
+            {stripeConfigured() ? (
+              <span className="font-semibold text-mint">Stripe connected</span>
+            ) : (
+              <span className="font-semibold text-danger">Stripe keys missing</span>
+            )}
+          </p>
+          <p className="text-xs">
+            Packs: ₪10 → 100 Sparks · ₪25 → 300 · ₪50 → 700
+          </p>
+        </div>
+
+        <h3 className="text-sm font-semibold text-warm">Recent purchases</h3>
+        {sparkOrders.length === 0 ? (
+          <p className="text-sm text-muted">No Sparks purchases yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {sparkOrders.map((o) => (
+              <li
+                key={o.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-ink-2/60 px-3 py-2 text-xs"
+              >
+                <div>
+                  <p className="font-semibold text-warm">
+                    @{o.user.handle} · +{o.sparks} Sparks
+                  </p>
+                  <p className="text-muted">
+                    {formatIls(o.amountAgorot)} · {o.status} ·{" "}
+                    {o.createdAt.toLocaleString()}
+                  </p>
+                </div>
+                <span
+                  className={
+                    o.status === "PAID" ? "font-semibold text-mint" : "text-muted"
+                  }
+                >
+                  {o.status}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <section className="space-y-3">
         <h2 className="font-display text-lg font-semibold text-danger">
