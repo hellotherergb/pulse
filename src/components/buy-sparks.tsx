@@ -59,17 +59,16 @@ export function BuySparks({
     <div className="mt-8">
       <h2 className="font-display text-lg font-600">Buy Sparks</h2>
       <p className="mt-1 text-sm text-muted">
-        Pay in Israeli shekels (₪). Card details stay on Stripe — never on Pulse.
+        Secure card checkout. You’ll enter card details on the payment page.
       </p>
 
-      {paymentsReady && testMode ? (
+      {/* Test hints only for admins — regular users never see “test mode”. */}
+      {isAdmin && paymentsReady && testMode ? (
         <div className="mt-3 rounded-2xl border border-amber-400/40 bg-amber-400/10 px-3 py-3 text-sm text-warm">
-          <p className="font-semibold text-amber-200">Stripe TEST mode</p>
+          <p className="font-semibold text-amber-200">Admin only — Stripe test</p>
           <p className="mt-1 text-xs text-muted">
-            Use a fake card — no real money. Card:{" "}
-            <code className="text-mint">4242 4242 4242 4242</code>
-            <br />
-            Expiry: any future date · CVC: any 3 digits · ZIP: any
+            Fake card: <code className="text-mint">4242 4242 4242 4242</code> ·
+            any future expiry · any CVC. Buyers won’t see this banner.
           </p>
         </div>
       ) : null}
@@ -77,8 +76,7 @@ export function BuySparks({
       {!paymentsReady ? (
         <div className="mt-3 space-y-2">
           <p className="rounded-xl border border-line bg-ink-2 px-3 py-3 text-sm text-muted">
-            Stripe test keys are not connected yet. Until then, admins can run a
-            demo buy (no card).
+            Card checkout is temporarily unavailable.
           </p>
           {isAdmin ? (
             <button

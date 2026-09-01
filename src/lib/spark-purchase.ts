@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "crypto";
+import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { requireAdmin } from "@/lib/admin";
@@ -8,12 +9,18 @@ import { getSparkPack } from "@/lib/spark-packs";
 import { fulfillSparkOrder } from "@/lib/spark-fulfill";
 import { getStripe, siteUrl, stripeConfigured } from "@/lib/stripe";
 
+function stripeErrMessage(err: unknown) {
+  if (err && typeof err === "object" && "message" in err) {
+    return String((err as { message: string }).message);
+  }
+  return "Checkout failed. Try again in a moment.";
+}
+
 export async function startSparkCheckoutAction(packId: string) {
   const user = await requireUser();
   if (!stripeConfigured()) {
     return {
-      error:
-        "Stripe test keys are not set yet. Admin can use “Demo buy”, or add STRIPE_SECRET_KEY (sk_test_…).",
+      error: "Payments are temporarily unavailable. Try again later.",
     };
   }
 
@@ -36,9 +43,10 @@ export async function startSparkCheckoutAction(packId: string) {
   });
 
   try {
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
       customer_email: user.email,
+      payment_method_types: ["card"],
       line_items: [
         {
           quantity: 1,
@@ -48,6 +56,8 @@ export async function startSparkCheckoutAction(packId: string) {
             product_data: {
               name: `Pulse — ${pack.label}`,
               description: `${pack.sparks} Sparks for your Pulse wallet`,
+              // Digital goods / services (avoids Managed Payments tax_code errors)
+              tax_code: "txcd_10000000",
             },
           },
         },
@@ -60,7 +70,15 @@ export async function startSparkCheckoutAction(packId: string) {
       },
       success_url: `${siteUrl()}/app/wallet?bought=1&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl()}/app/wallet?canceled=1`,
-    });
+    };
+
+    // Some Stripe accounts enable Managed Payments by default and reject sessions
+    // without tax config — disable it for simple Sparks top-ups.
+    (sessionParams as Stripe.Checkout.SessionCreateParams & {
+      managed_payments?: { enabled: boolean };
+    }).managed_payments = { enabled: false };
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     if (!session.url || !session.id) {
       await prisma.sparkOrder.update({
@@ -82,6 +100,14 @@ export async function startSparkCheckoutAction(packId: string) {
       where: { id: order.id },
       data: { status: "FAILED" },
     });
+    // Keep user-facing text clean; Stripe's long Managed Payments message is noisy.
+    const raw = stripeErrMessage(err);
+    if (/managed payments|tax_code|tax code/i.test(raw)) {
+      return {
+        error:
+          "Checkout could not start (Stripe tax settings). Try again in a moment.",
+      };
+    }
     return { error: "Checkout failed. Try again in a moment." };
   }
 }
@@ -104,7 +130,7 @@ export async function confirmSparkCheckoutAction(sessionId: string) {
   }
 }
 
-/** Admin-only fake purchase (no Stripe) for trying the wallet before test keys. */
+/** Admin-only fake purchase (no Stripe) for trying the wallet before keys. */
 export async function demoSparkBuyAction(packId: string) {
   await requireAdmin();
   const user = await requireUser();
