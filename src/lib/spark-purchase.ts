@@ -8,6 +8,7 @@ import { getSparkPack } from "@/lib/spark-packs";
 import { fulfillSparkOrder } from "@/lib/spark-fulfill";
 import {
   createLemonCheckout,
+  ensureLemonWebhook,
   lemonConfigured,
   siteUrl,
 } from "@/lib/lemon";
@@ -20,8 +21,10 @@ export async function startSparkCheckoutAction(packId: string) {
     };
   }
 
-  const pack = getSparkPack(packId);
+          const pack = getSparkPack(packId);
   if (!pack) return { error: "Unknown Sparks pack" };
+
+  await ensureLemonWebhook();
 
   const order = await prisma.sparkOrder.create({
     data: {

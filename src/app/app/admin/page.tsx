@@ -27,7 +27,7 @@ import {
   settleExpiredAuctions,
 } from "@/lib/auction-actions";
 import { formatIls } from "@/lib/spark-packs";
-import { isLemonTestMode, lemonConfigured } from "@/lib/lemon";
+import { ensureLemonWebhook, isLemonTestMode, lemonConfigured } from "@/lib/lemon";
 
 export default async function AdminPage() {
   const me = await getCurrentUser();
@@ -36,6 +36,7 @@ export default async function AdminPage() {
   if (!me.isAdmin) redirect("/app");
 
   await settleExpiredAuctions();
+  if (lemonConfigured()) await ensureLemonWebhook();
 
   const [users, posts, conversations, emotes, openAuctions, banRequests, sparkOrders, emoteSales] =
     await Promise.all([

@@ -30,6 +30,72 @@ type LemonCheckoutResponse = {
   errors?: Array<{ detail?: string; title?: string }>;
 };
 
+async function lemonFetch(path: string, init?: RequestInit) {
+  const apiKey = process.env.LEMON_SQUEEZY_API_KEY!.trim();
+  const res = await fetch(`https://api.lemonsqueezy.com/v1${path}`, {
+    ...init,
+    headers: {
+      Accept: "application/vnd.api+json",
+      "Content-Type": "application/vnd.api+json",
+      Authorization: `Bearer ${apiKey}`,
+      ...(init?.headers ?? {}),
+    },
+  });
+  const json = (await res.json()) as {
+    data?: unknown;
+    errors?: Array<{ detail?: string; title?: string }>;
+  };
+  return { ok: res.ok, status: res.status, json };
+}
+
+/** Register order_created webhook if it isn't already pointed at this site. */
+export async function ensureLemonWebhook() {
+  const storeId = process.env.LEMON_SQUEEZY_STORE_ID?.trim();
+  const secret = process.env.LEMON_SQUEEZY_WEBHOOK_SECRET?.trim();
+  if (!lemonConfigured() || !storeId || !secret) return { ok: false as const };
+
+  const urls = Array.from(
+    new Set([
+      `${siteUrl()}/api/lemon/webhook`,
+      "https://postpulse.com/api/lemon/webhook",
+      "https://postinpulse.com/api/lemon/webhook",
+    ]),
+  );
+  const listed = await lemonFetch("/webhooks");
+  const hooks = Array.isArray(listed.json.data) ? listed.json.data : [];
+  const existing = new Set(
+    hooks.map((h) => (h as { attributes?: { url?: string } }).attributes?.url ?? ""),
+  );
+
+  let created = 0;
+  for (const url of urls) {
+    if (existing.has(url)) continue;
+    const res = await lemonFetch("/webhooks", {
+      method: "POST",
+      body: JSON.stringify({
+        data: {
+          type: "webhooks",
+          attributes: {
+            url,
+            events: ["order_created"],
+            secret,
+            test_mode: isLemonTestMode(),
+          },
+          relationships: {
+            store: { data: { type: "stores", id: storeId } },
+          },
+        },
+      }),
+    });
+    if (!res.ok) {
+      console.error("lemon webhook register failed", url, res.status, res.json.errors);
+    } else {
+      created += 1;
+    }
+  }
+  return { ok: true as const, created };
+}
+
 export async function createLemonCheckout(input: {
   /** Price in store minor units (agorot for ILS). */
   customPrice: number;
