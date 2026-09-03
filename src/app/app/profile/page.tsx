@@ -4,6 +4,7 @@ import { SignOutButton } from "@/components/sign-out-button";
 import { NameWithBadge } from "@/components/avatar";
 import { AvatarUploader } from "@/components/avatar-uploader";
 import { OwnPostTile } from "@/components/own-post-tile";
+import { AppearanceSettings } from "@/components/appearance-settings";
 import { getCosmetic } from "@/lib/cosmetics";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
@@ -80,6 +81,8 @@ export default async function ProfilePage() {
             <Link href="/app/shop">Shop →</Link>
           </div>
         </div>
+
+        <AppearanceSettings />
 
         <h2 className="font-display mt-8 text-lg font-600">Your content</h2>
         {posts.length === 0 ? (

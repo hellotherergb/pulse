@@ -73,8 +73,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b0f14",
-  colorScheme: "dark",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f3f5f8" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0f14" },
+  ],
+  colorScheme: "dark light",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -120,8 +123,13 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="en">
+    <html lang="en" data-mode="dark" data-accent="mint">
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var m=localStorage.getItem("pulse-mode");var a=localStorage.getItem("pulse-accent");if(m==="light"||m==="dark")document.documentElement.dataset.mode=m;if(a)document.documentElement.dataset.accent=a;document.documentElement.style.colorScheme=document.documentElement.dataset.mode||"dark"}catch(e){}`,
+          }}
+        />
         <meta
           name="msvalidate.01"
           content="0B0A48755F7D1C7FB6E929D75B77017D"
