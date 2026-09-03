@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { LikeButton, FollowButton, DeletePostButton, ReportButton } from "./action-buttons";
+import { LikeButton, FollowButton, DeletePostButton, ReportButton, BoostPostButton, TipPostButton } from "./action-buttons";
 import { ViewTracker } from "./view-tracker";
 import { Avatar, NameWithBadge } from "./avatar";
+import { BOOST_COST } from "@/lib/spark-spend-config";
 
 type Author = {
   id: string;
@@ -20,6 +21,8 @@ export type PostCardData = {
   mediaUrl: string;
   viewsCount: number;
   likesCount: number;
+  tipsCount: number;
+  boostedUntil: Date | string | null;
   createdAt: Date | string;
   author: Author;
 };
@@ -29,11 +32,18 @@ type PostCardProps = {
   liked: boolean;
   following: boolean;
   isOwn: boolean;
+  sparksBalance: number;
 };
 
-export function PostCard({ post, liked, following, isOwn }: PostCardProps) {
+export function PostCard({ post, liked, following, isOwn, sparksBalance }: PostCardProps) {
+  const boosted =
+    post.boostedUntil != null &&
+    new Date(post.boostedUntil).getTime() > Date.now();
+
   return (
-    <article className="border-b border-line px-4 py-4">
+    <article
+      className={`border-b border-line px-4 py-4 ${boosted ? "bg-amber-400/5" : ""}`}
+    >
       <ViewTracker postId={post.id} />
       <div className="flex gap-3">
         <Link href={`/app/u/${post.author.handle}`}>
@@ -90,14 +100,30 @@ export function PostCard({ post, liked, following, isOwn }: PostCardProps) {
             />
           )}
 
-          <div className="mt-3 flex items-center gap-5">
+          <div className="mt-3 flex flex-wrap items-center gap-4">
             <LikeButton postId={post.id} liked={liked} count={post.likesCount} />
+            {!isOwn ? (
+              <TipPostButton postId={post.id} sparksBalance={sparksBalance} />
+            ) : null}
+            {isOwn ? (
+              <BoostPostButton
+                postId={post.id}
+                boosted={boosted}
+                canAfford={sparksBalance >= BOOST_COST}
+              />
+            ) : null}
+            {post.tipsCount > 0 ? (
+              <span className="text-xs font-semibold text-mint">
+                ✦{post.tipsCount} tipped
+              </span>
+            ) : null}
             <span className="text-xs text-muted">
               {post.viewsCount.toLocaleString()} views
             </span>
             <span className="text-xs uppercase tracking-wide text-muted/70">
               {post.type}
             </span>
+            {!isOwn ? <ReportButton postId={post.id} /> : null}
           </div>
         </div>
       </div>

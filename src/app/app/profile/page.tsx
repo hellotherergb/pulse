@@ -76,6 +76,7 @@ export default async function ProfilePage() {
           </div>
           <div className="flex gap-3 text-sm font-semibold text-mint">
             <Link href="/app/wallet">Wallet →</Link>
+            <Link href="/app/market">Market →</Link>
             <Link href="/app/shop">Shop →</Link>
           </div>
         </div>

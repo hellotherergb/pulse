@@ -2,10 +2,10 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { revalidateUser } from "@/lib/session";
 
-/** Credit Sparks after Stripe marks the session paid (webhook or success page). */
-export async function fulfillSparkOrder(stripeSessionId: string) {
+/** Credit Sparks after payment is confirmed (Grow notify / Stripe webhook / success page). */
+export async function fulfillSparkOrder(checkoutId: string) {
   const order = await prisma.sparkOrder.findUnique({
-    where: { stripeSessionId },
+    where: { checkoutId },
   });
   if (!order) return { error: "Order not found" };
   if (order.status === "PAID") return { ok: true as const, already: true };
@@ -40,4 +40,10 @@ export async function fulfillSparkOrder(stripeSessionId: string) {
   revalidatePath("/app/admin");
   revalidatePath("/app", "layout");
   return { ok: true as const };
+}
+
+export async function fulfillSparkOrderById(orderId: string) {
+  const order = await prisma.sparkOrder.findUnique({ where: { id: orderId } });
+  if (!order) return { error: "Order not found" };
+  return fulfillSparkOrder(order.checkoutId);
 }

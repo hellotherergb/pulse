@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import {
   scanUserContent,
@@ -92,5 +93,7 @@ export async function createUserReport(opts: {
     },
   });
 
+  revalidatePath("/app/admin");
+  revalidatePath("/app", "layout");
   return { ok: true };
 }

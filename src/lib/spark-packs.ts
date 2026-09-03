@@ -39,5 +39,6 @@ export function getSparkPack(id: string) {
 }
 
 export function formatIls(agorot: number) {
+  if (agorot <= 0) return "Free";
   return `₪${(agorot / 100).toFixed(agorot % 100 === 0 ? 0 : 2)}`;
 }

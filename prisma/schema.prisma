@@ -44,25 +44,88 @@ model User {
   banRequests    BanRequest[]
   reportsFiled   BanRequest[] @relation("ReportsFiled")
   sparkOrders    SparkOrder[]
+  sparkCashouts  SparkCashout[]
+  emoteListings  EmoteListing[] @relation("EmoteSeller")
+  emotePurchases EmoteListing[] @relation("EmoteBuyer")
 }
 
-/// Real-money Sparks purchase (Stripe Checkout).
+/// Sparks pack purchase ledger (Lemon Squeezy / demo).
 model SparkOrder {
-  id              String   @id @default(cuid())
-  userId          String
-  packId          String
-  sparks          Int
-  amountAgorot    Int // ILS minor units (₪10 = 1000)
-  currency        String   @default("ils")
-  stripeSessionId String   @unique
-  status          String   @default("PENDING") // PENDING | PAID | FAILED
-  createdAt       DateTime @default(now())
-  paidAt          DateTime?
+  id           String   @id @default(cuid())
+  userId       String
+  packId       String
+  sparks       Int
+  amountAgorot Int // ILS minor units (₪10 = 1000); 0 for free claims
+  currency     String   @default("ils")
+  /// Payment/claim reference (free_… / Grow processId / Stripe session).
+  checkoutId     String   @unique
+  provider       String   @default("lemon") // lemon | stripe | demo | free
+  status         String   @default("PENDING") // PENDING | PAID | FAILED
+  lemonOrderId   String?
+  refundedSparks Int      @default(0)
+  refundedAgorot Int      @default(0)
+  createdAt      DateTime @default(now())
+  paidAt         DateTime?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cashouts SparkCashoutItem[]
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
+}
+
+/// Sell Sparks back — refunds the original Lemon / card charge.
+model SparkCashout {
+  id           String   @id @default(cuid())
+  userId       String
+  sparks       Int
+  amountAgorot Int
+  rateAgorot   Int // ILS minor units paid per Spark at sale time
+  boostBps     Int      @default(0) // e.g. 1200 = +12%
+  reason       String   @default("SPARKS") // SPARKS | EMOTE
+  emoteId      String   @default("")
+  status       String   @default("PENDING") // PENDING | PAID | FAILED
+  createdAt    DateTime @default(now())
+
+  user  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items SparkCashoutItem[]
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+model SparkCashoutItem {
+  id           String @id @default(cuid())
+  cashoutId    String
+  sparkOrderId String
+  sparks       Int
+  amountAgorot Int
+
+  cashout SparkCashout @relation(fields: [cashoutId], references: [id], onDelete: Cascade)
+  order   SparkOrder   @relation(fields: [sparkOrderId], references: [id], onDelete: Cascade)
+
+  @@index([sparkOrderId])
+}
+
+/// Peer emote sale (Sparks) or house cash-out of a rare emote.
+model EmoteListing {
+  id          String    @id @default(cuid())
+  sellerId    String
+  buyerId     String?
+  emoteId     String
+  ownedEmoteId String
+  priceSparks Int
+  status      String    @default("OPEN") // OPEN | SOLD | CANCELLED | CASHED
+  createdAt   DateTime  @default(now())
+  soldAt      DateTime?
+
+  seller User        @relation("EmoteSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  buyer  User?       @relation("EmoteBuyer", fields: [buyerId], references: [id], onDelete: SetNull)
+  emote  CustomEmote @relation(fields: [emoteId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([sellerId])
+  @@index([emoteId])
 }
 
 /// Flagged content / community report awaiting admin ban decision.
@@ -101,14 +164,16 @@ model MapPixel {
 }
 
 model Post {
-  id         String   @id @default(cuid())
-  authorId   String
-  type       String // TEXT | IMAGE | CLIP
-  body       String   @default("")
-  mediaUrl   String   @default("")
-  viewsCount Int      @default(0)
-  likesCount Int      @default(0)
-  createdAt  DateTime @default(now())
+  id           String    @id @default(cuid())
+  authorId     String
+  type         String // TEXT | IMAGE | CLIP
+  body         String    @default("")
+  mediaUrl     String    @default("")
+  viewsCount   Int       @default(0)
+  likesCount   Int       @default(0)
+  tipsCount    Int       @default(0)
+  boostedUntil DateTime?
+  createdAt    DateTime  @default(now())
 
   author User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
   likes  Like[]
@@ -220,9 +285,10 @@ model CustomEmote {
   createdById String
   createdAt   DateTime @default(now())
 
-  createdBy User         @relation("EmoteCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdBy User           @relation("EmoteCreator", fields: [createdById], references: [id], onDelete: Cascade)
   auctions  Auction[]
   owners    OwnedEmote[]
+  listings  EmoteListing[]
 
   @@index([createdById])
 }

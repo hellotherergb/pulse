@@ -60,6 +60,7 @@ async function ForYouContent() {
 
   return (
     <ForYouFeed
+      sparksBalance={user.sparksBalance}
       clips={clips.map((c) => ({
         id: c.id,
         body: c.body,

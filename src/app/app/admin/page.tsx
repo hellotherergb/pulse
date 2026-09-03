@@ -27,7 +27,7 @@ import {
   settleExpiredAuctions,
 } from "@/lib/auction-actions";
 import { formatIls } from "@/lib/spark-packs";
-import { isStripeTestMode, stripeConfigured } from "@/lib/stripe";
+import { isLemonTestMode, lemonConfigured } from "@/lib/lemon";
 
 export default async function AdminPage() {
   const me = await getCurrentUser();
@@ -37,7 +37,7 @@ export default async function AdminPage() {
 
   await settleExpiredAuctions();
 
-  const [users, posts, conversations, emotes, openAuctions, banRequests, sparkOrders] =
+  const [users, posts, conversations, emotes, openAuctions, banRequests, sparkOrders, emoteSales] =
     await Promise.all([
     prisma.user.findMany({
       orderBy: { createdAt: "desc" },
@@ -117,6 +117,16 @@ export default async function AdminPage() {
         user: { select: { handle: true, name: true } },
       },
     }),
+    prisma.emoteListing.findMany({
+      where: { status: "SOLD" },
+      orderBy: { soldAt: "desc" },
+      take: 30,
+      include: {
+        seller: { select: { handle: true } },
+        buyer:  { select: { handle: true } },
+        emote:  { select: { name: true } },
+      },
+    }),
   ]);
 
   const reportedIds = [...new Set(banRequests.map((r) => r.userId))];
@@ -173,62 +183,60 @@ export default async function AdminPage() {
         <h2 className="font-display text-lg font-semibold">Sparks sales (₪)</h2>
         <div className="rounded-2xl border border-line bg-ink-2/70 p-3 text-sm text-muted space-y-2">
           <p className="font-semibold text-warm">
-            Try with fake cards first (Stripe TEST mode — no bank needed)
+            Lemon Squeezy — free to set up ($0/mo), Israel OK
           </p>
           <ol className="list-decimal space-y-1 pl-5">
             <li>
-              Free signup:{" "}
+              Sign up (free):{" "}
               <a
                 className="text-mint underline"
-                href="https://dashboard.stripe.com/register"
+                href="https://app.lemonsqueezy.com/register"
                 target="_blank"
                 rel="noreferrer"
               >
-                dashboard.stripe.com/register
+                app.lemonsqueezy.com/register
               </a>
             </li>
             <li>
-              Turn on <strong className="text-warm">Test mode</strong> (switch
-              in the Stripe dashboard)
+              Create a store in <strong className="text-warm">ILS (₪)</strong>,
+              add one product e.g. “Pulse Sparks” (one-time, any placeholder
+              price — we override price per pack)
             </li>
             <li>
-              Copy the <strong className="text-warm">Secret key</strong>{" "}
-              (<code className="text-xs text-warm">sk_test_…</code>) from{" "}
-              <a
-                className="text-mint underline"
-                href="https://dashboard.stripe.com/test/apikeys"
-                target="_blank"
-                rel="noreferrer"
-              >
-                API keys
-              </a>
+              Copy Store ID + Variant ID from the product, and create an API key
+              under Settings → API
             </li>
             <li>
-              Paste it here in chat (or Vercel env as{" "}
-              <code className="text-xs text-warm">STRIPE_SECRET_KEY</code>) — I’ll
-              finish wiring
+              Add webhook →{" "}
+              <code className="text-xs text-warm">
+                https://postinpulse.com/api/lemon/webhook
+              </code>{" "}
+              event <code className="text-xs text-warm">order_created</code>,
+              save the signing secret
             </li>
             <li>
-              On Wallet, buy a pack and pay with{" "}
-              <code className="text-xs text-mint">4242 4242 4242 4242</code>
+              Vercel env:{" "}
+              <code className="text-xs text-warm">LEMON_SQUEEZY_API_KEY</code>,{" "}
+              <code className="text-xs text-warm">LEMON_SQUEEZY_STORE_ID</code>,{" "}
+              <code className="text-xs text-warm">LEMON_SQUEEZY_VARIANT_ID</code>,{" "}
+              <code className="text-xs text-warm">
+                LEMON_SQUEEZY_WEBHOOK_SECRET
+              </code>
+              . Keep test mode until ready; set{" "}
+              <code className="text-xs text-warm">LEMON_SQUEEZY_LIVE=1</code> for
+              real charges
             </li>
           </ol>
-          <p className="text-xs">
-            Webhook is optional for the first test — returning from Checkout
-            credits Sparks. Add{" "}
-            <code className="text-warm">STRIPE_WEBHOOK_SECRET</code> later for
-            live reliability.
-          </p>
           <p>
             Status:{" "}
-            {stripeConfigured() ? (
+            {lemonConfigured() ? (
               <span className="font-semibold text-mint">
-                Stripe connected
-                {isStripeTestMode() ? " (TEST mode)" : " (LIVE)"}
+                Lemon connected
+                {isLemonTestMode() ? " (test mode)" : " (LIVE)"}
               </span>
             ) : (
               <span className="font-semibold text-danger">
-                No keys yet — use Wallet → Admin demo buy, or add sk_test_
+                Not connected — Wallet → Admin demo buy, or add LEMON_* env
               </span>
             )}
           </p>
@@ -236,8 +244,9 @@ export default async function AdminPage() {
             Packs: ₪10 → 100 Sparks · ₪25 → 300 · ₪50 → 700
           </p>
           <p className="text-xs text-muted">
-            Live money later: flip Stripe to live keys + add your bank under
-            Payouts. Never paste card numbers into Pulse.
+            No monthly fee — Lemon takes a cut per sale and pays out to PayPal
+            or bank (Israel supported). Never paste card numbers into Pulse.
+            Market cash-outs refund leftover pack credit to the same card.
           </p>
         </div>
 
@@ -267,6 +276,28 @@ export default async function AdminPage() {
                 >
                   {o.status}
                 </span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <h3 className="text-sm font-semibold text-warm">Recent emote trades</h3>
+        {emoteSales.length === 0 ? (
+          <p className="text-sm text-muted">No trades yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {emoteSales.map((s) => (
+              <li
+                key={s.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-ink-2/60 px-3 py-2 text-xs"
+              >
+                <div>
+                  <p className="font-semibold text-warm">{s.emote.name}</p>
+                  <p className="text-muted">
+                    @{s.seller.handle} → @{s.buyer?.handle ?? "?"} · ✦{s.priceSparks}
+                  </p>
+                </div>
+                <span className="text-muted">{s.soldAt?.toLocaleDateString()}</span>
               </li>
             ))}
           </ul>

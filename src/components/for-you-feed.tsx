@@ -9,6 +9,8 @@ import {
   toggleFollowAction,
   deleteOwnPostAction,
 } from "@/lib/actions";
+import { boostPostAction, tipPostAction } from "@/lib/spark-spend";
+import { BOOST_COST, TIP_PRESETS } from "@/lib/spark-spend-config";
 import { ReportPostButton } from "./report-user";
 
 type Clip = {
@@ -28,7 +30,13 @@ type Clip = {
   isOwn: boolean;
 };
 
-export function ForYouFeed({ clips }: { clips: Clip[] }) {
+export function ForYouFeed({
+  clips,
+  sparksBalance,
+}: {
+  clips: Clip[];
+  sparksBalance: number;
+}) {
   const [index, setIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const viewed = useRef<Set<string>>(new Set());
@@ -116,9 +124,13 @@ export function ForYouFeed({ clips }: { clips: Clip[] }) {
 
       <div className="absolute bottom-10 right-3 z-10 flex flex-col items-center gap-4">
         {clip.isOwn ? (
-          <ClipDelete postId={clip.id} />
+          <>
+            <ClipBoost postId={clip.id} sparksBalance={sparksBalance} />
+            <ClipDelete postId={clip.id} />
+          </>
         ) : (
           <>
+            <ClipTip postId={clip.id} sparksBalance={sparksBalance} />
             <ClipFollow userId={clip.author.id} following={clip.following} />
             <ReportPostButton postId={clip.id} variant="clip" />
           </>
@@ -128,6 +140,87 @@ export function ForYouFeed({ clips }: { clips: Clip[] }) {
           {index + 1}/{clips.length}
         </div>
       </div>
+    </div>
+  );
+}
+
+function ClipBoost({
+  postId,
+  sparksBalance,
+}: {
+  postId: string;
+  sparksBalance: number;
+}) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const canAfford = sparksBalance >= BOOST_COST;
+
+  return (
+    <button
+      type="button"
+      disabled={pending || !canAfford}
+      title={`Boost ✦${BOOST_COST}`}
+      className="flex flex-col items-center gap-1 text-white disabled:opacity-40"
+      onClick={() =>
+        start(async () => {
+          await boostPostAction(postId);
+          router.refresh();
+        })
+      }
+    >
+      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-amber-400/20 backdrop-blur text-lg">
+        🔥
+      </span>
+      <span className="text-[10px] font-semibold">Boost</span>
+    </button>
+  );
+}
+
+function ClipTip({
+  postId,
+  sparksBalance,
+}: {
+  postId: string;
+  sparksBalance: number;
+}) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative flex flex-col items-center">
+      <button
+        type="button"
+        disabled={pending}
+        className="flex flex-col items-center gap-1 text-white"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-mint/20 backdrop-blur text-sm font-bold text-mint">
+          ✦
+        </span>
+        <span className="text-[10px] font-semibold">Tip</span>
+      </button>
+      {open ? (
+        <div className="absolute bottom-full right-0 mb-2 flex flex-col gap-1 rounded-xl border border-white/20 bg-black/80 p-1 backdrop-blur">
+          {TIP_PRESETS.map((amount) => (
+            <button
+              key={amount}
+              type="button"
+              disabled={pending || sparksBalance < amount}
+              className="rounded-lg px-3 py-1.5 text-xs font-semibold text-mint hover:bg-white/10 disabled:opacity-40"
+              onClick={() =>
+                start(async () => {
+                  await tipPostAction(postId, amount);
+                  setOpen(false);
+                  router.refresh();
+                })
+              }
+            >
+              ✦{amount}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

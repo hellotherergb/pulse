@@ -40,8 +40,21 @@ export default async function ShopPage() {
       </div>
 
       <Link
-        href="/app/auction"
+        href="/app/market"
         className="mt-5 flex items-center justify-between rounded-2xl border border-mint/25 bg-gradient-to-r from-mint/15 to-transparent px-4 py-3 transition hover:border-mint/45"
+      >
+        <div>
+          <p className="font-display text-base font-600">Spark Market</p>
+          <p className="text-xs text-muted">
+            Sell Sparks back to your card · trade rare emotes.
+          </p>
+        </div>
+        <span className="text-mint">→</span>
+      </Link>
+
+      <Link
+        href="/app/auction"
+        className="mt-3 flex items-center justify-between rounded-2xl border border-line bg-ink-2/60 px-4 py-3 transition hover:border-mint/35"
       >
         <div>
           <p className="font-display text-base font-600">Auction House</p>
@@ -64,6 +77,35 @@ export default async function ShopPage() {
         </div>
         <span className="text-mint">→</span>
       </Link>
+
+      <section className="mt-7 rounded-2xl border border-mint/25 bg-mint/5 p-4">
+        <h2 className="font-display text-lg font-600">Spend Sparks</h2>
+        <p className="mt-1 text-xs text-muted">
+          Fun ways to use Sparks — boosts burn Sparks permanently so the economy stays healthy.
+        </p>
+        <ul className="mt-3 space-y-2 text-sm text-muted">
+          <li>
+            <span className="font-semibold text-warm">🔥 Boost a post</span> — ✦50
+            for 3h at the top of feeds (on your posts in Home)
+          </li>
+          <li>
+            <span className="font-semibold text-warm">✦ Tip a creator</span> — ✦5,
+            ✦10, or ✦25 on any post
+          </li>
+          <li>
+            <span className="font-semibold text-warm">Cosmetics</span> — frames,
+            badges, titles below
+          </li>
+          <li>
+            <span className="font-semibold text-warm">Pixel map</span> — ✦1 per
+            pixel on the map
+          </li>
+          <li>
+            <span className="font-semibold text-warm">Auction house</span> — bid on
+            rare emotes
+          </li>
+        </ul>
+      </section>
 
       {SLOT_ORDER.map((slot) => (
         <section key={slot} className="mt-7">

@@ -3,6 +3,12 @@
 Your **accounts, posts, chats, and media stay saved** when you update the app.
 Code updates go to Vercel; data lives in Neon + Blob and is never wiped by a deploy.
 
+## Live URL
+
+Production: https://pulse-sand-alpha.vercel.app
+
+GitHub auto-deploy: in Vercel → Account Settings → Login Connections, connect GitHub, then link `hellotherergb/pulse` to the project. Until then, deploy with `npx vercel --prod`.
+
 ## Agent / you handoff (required once)
 
 Code is already cloud-ready. These account steps need **you** (browsers cannot create your Neon/GitHub/Vercel logins):

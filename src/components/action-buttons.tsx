@@ -7,6 +7,11 @@ import {
   toggleFollowAction,
   deleteOwnPostAction,
 } from "@/lib/actions";
+import { boostPostAction, tipPostAction } from "@/lib/spark-spend";
+import {
+  BOOST_COST,
+  TIP_PRESETS,
+} from "@/lib/spark-spend-config";
 import { ReportPostButton } from "./report-user";
 
 export function LikeButton({
@@ -138,4 +143,97 @@ export function ReportButton({
   variant?: "feed" | "clip";
 }) {
   return <ReportPostButton postId={postId} variant={variant} />;
+}
+
+export function BoostPostButton({
+  postId,
+  boosted,
+  canAfford,
+}: {
+  postId: string;
+  boosted: boolean;
+  canAfford: boolean;
+}) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <div className="inline-flex flex-col items-start">
+      <button
+        type="button"
+        disabled={pending || !canAfford}
+        onClick={() => {
+          setError(null);
+          start(async () => {
+            const res = await boostPostAction(postId);
+            if (res && "error" in res && res.error) setError(res.error);
+            else router.refresh();
+          });
+        }}
+        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold disabled:opacity-50 ${
+          boosted
+            ? "border border-amber-400/40 bg-amber-400/15 text-amber-200"
+            : "border border-line text-muted hover:border-amber-400/40 hover:text-amber-200"
+        }`}
+      >
+        {pending ? "…" : boosted ? "🔥 Boosted" : `Boost ✦${BOOST_COST}`}
+      </button>
+      {error ? <p className="mt-1 text-[10px] text-danger">{error}</p> : null}
+    </div>
+  );
+}
+
+export function TipPostButton({
+  postId,
+  sparksBalance,
+}: {
+  postId: string;
+  sparksBalance: number;
+}) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1 text-sm text-muted hover:text-mint"
+      >
+        ✦ Tip
+      </button>
+      {open ? (
+        <div className="absolute bottom-full left-0 z-10 mb-2 flex gap-1 rounded-xl border border-line bg-ink-2 p-1 shadow-lg">
+          {TIP_PRESETS.map((amount) => (
+            <button
+              key={amount}
+              type="button"
+              disabled={pending || sparksBalance < amount}
+              onClick={() => {
+                setError(null);
+                start(async () => {
+                  const res = await tipPostAction(postId, amount);
+                  if (res && "error" in res && res.error) setError(res.error);
+                  else {
+                    setOpen(false);
+                    router.refresh();
+                  }
+                });
+              }}
+              className="rounded-lg px-2.5 py-1 text-xs font-semibold text-mint hover:bg-mint/10 disabled:opacity-40"
+            >
+              ✦{amount}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {error ? (
+        <p className="mt-1 text-[10px] text-danger">{error}</p>
+      ) : null}
+    </div>
+  );
 }

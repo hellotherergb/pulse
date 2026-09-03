@@ -1,4 +1,7 @@
 import Stripe from "stripe";
+import { siteUrl } from "@/lib/site";
+
+export { siteUrl };
 
 let stripe: Stripe | null = null;
 
@@ -19,12 +22,4 @@ export function stripeConfigured() {
 export function isStripeTestMode() {
   const key = process.env.STRIPE_SECRET_KEY ?? "";
   return key.startsWith("sk_test_");
-}
-
-export function siteUrl() {
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.NEXTAUTH_URL ||
-    "https://pulse-sand-alpha.vercel.app"
-  ).replace(/\/$/, "");
 }

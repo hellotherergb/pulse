@@ -30,7 +30,7 @@ export function BuySparks({
 
   useEffect(() => {
     const bought = search.get("bought");
-    const sessionId = search.get("session_id");
+    const orderId = search.get("order");
     const canceled = search.get("canceled");
 
     if (canceled) {
@@ -38,12 +38,17 @@ export function BuySparks({
       return;
     }
 
-    if (bought && sessionId && !confirmed.current) {
+    if (bought && orderId && !confirmed.current) {
       confirmed.current = true;
       start(async () => {
-        const res = await confirmSparkCheckoutAction(sessionId);
+        const res = await confirmSparkCheckoutAction(orderId);
         if (res && "error" in res && res.error) {
-          setError(res.error);
+          // Webhook may still be in flight — soft success message.
+          setMessage(
+            "Payment received — Sparks will appear in a moment if not already.",
+          );
+          router.replace("/app/wallet");
+          router.refresh();
           return;
         }
         setMessage("Payment received — Sparks added to your wallet.");
@@ -59,16 +64,18 @@ export function BuySparks({
     <div className="mt-8">
       <h2 className="font-display text-lg font-600">Buy Sparks</h2>
       <p className="mt-1 text-sm text-muted">
-        Secure card checkout. You’ll enter card details on the payment page.
+        Secure checkout via Lemon Squeezy. Card details stay on their page —
+        never on Pulse.
       </p>
 
-      {/* Test hints only for admins — regular users never see “test mode”. */}
       {isAdmin && paymentsReady && testMode ? (
         <div className="mt-3 rounded-2xl border border-amber-400/40 bg-amber-400/10 px-3 py-3 text-sm text-warm">
-          <p className="font-semibold text-amber-200">Admin only — Stripe test</p>
+          <p className="font-semibold text-amber-200">
+            Admin only — Lemon test mode
+          </p>
           <p className="mt-1 text-xs text-muted">
-            Fake card: <code className="text-mint">4242 4242 4242 4242</code> ·
-            any future expiry · any CVC. Buyers won’t see this banner.
+            Use Lemon’s test checkout / test cards. Buyers won’t see this
+            banner.
           </p>
         </div>
       ) : null}
@@ -90,7 +97,7 @@ export function BuySparks({
                     setError(res.error);
                     return;
                   }
-                  setMessage("Demo: +100 Sparks added (no Stripe).");
+                  setMessage("Demo: +100 Sparks added (no payment).");
                   router.refresh();
                 });
               }}
@@ -151,13 +158,13 @@ export function BuySparks({
                     setError(res.error);
                     return;
                   }
-                  setMessage("Demo: +100 Sparks added (no Stripe).");
+                  setMessage("Demo: +100 Sparks added (no payment).");
                   router.refresh();
                 });
               }}
               className="w-full rounded-xl border border-line px-3 py-2 text-xs font-semibold text-muted"
             >
-              Admin demo buy (skip Stripe)
+              Admin demo buy (skip payment)
             </button>
           ) : null}
         </div>

@@ -31,6 +31,16 @@ export function TopBar({
           </Link>
         ) : null}
         <Link
+          href="/app/market"
+          aria-label="Spark Market"
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-muted transition hover:border-mint/40 hover:text-mint"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M4 16l5-6 4 3 7-8" />
+            <path d="M15 5h5v5" />
+          </svg>
+        </Link>
+        <Link
           href="/app/map"
           aria-label="Pixel Map"
           className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-muted transition hover:border-mint/40 hover:text-mint"

@@ -3,6 +3,7 @@ import { StoriesRail } from "@/components/stories-rail";
 import { PostCard } from "@/components/post-card";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { sortFeedPosts } from "@/lib/spark-spend-config";
 import AppLoading from "./loading";
 
 const authorSelect = {
@@ -19,7 +20,7 @@ async function HomeFeed() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const [posts, stories] = await Promise.all([
+  const [postsRaw, stories] = await Promise.all([
     prisma.post.findMany({
       select: {
         id: true,
@@ -28,12 +29,14 @@ async function HomeFeed() {
         mediaUrl: true,
         viewsCount: true,
         likesCount: true,
+        tipsCount: true,
+        boostedUntil: true,
         createdAt: true,
         authorId: true,
         author: { select: authorSelect },
       },
       orderBy: { createdAt: "desc" },
-      take: 20,
+      take: 40,
     }),
     prisma.story.findMany({
       where: { expiresAt: { gt: new Date() } },
@@ -54,6 +57,8 @@ async function HomeFeed() {
       take: 24,
     }),
   ]);
+
+  const posts = sortFeedPosts(postsRaw).slice(0, 20);
 
   const postIds = posts.map((p) => p.id);
   const authorIds = [...new Set(posts.map((p) => p.authorId))];
@@ -102,12 +107,15 @@ async function HomeFeed() {
               mediaUrl: post.mediaUrl,
               viewsCount: post.viewsCount,
               likesCount: post.likesCount,
+              tipsCount: post.tipsCount,
+              boostedUntil: post.boostedUntil,
               createdAt: post.createdAt,
               author: post.author,
             }}
             liked={likedSet.has(post.id)}
             following={followingSet.has(post.authorId)}
             isOwn={post.authorId === user.id}
+            sparksBalance={user.sparksBalance}
           />
         ))
       )}

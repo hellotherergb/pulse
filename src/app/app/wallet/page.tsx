@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { BuySparks } from "@/components/buy-sparks";
+import { CashoutEarningsButton } from "@/components/market-actions-ui";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { SPARK_PACKS } from "@/lib/spark-packs";
-import { isStripeTestMode, stripeConfigured } from "@/lib/stripe";
+import { isLemonTestMode, lemonConfigured } from "@/lib/lemon";
 
 function txLabel(reason: string) {
   switch (reason) {
@@ -20,6 +21,20 @@ function txLabel(reason: string) {
       return "Sparks purchase";
     case "SHOP_SPEND":
       return "Shop purchase";
+    case "SPARK_CASHOUT":
+      return "Sold Sparks";
+    case "EMOTE_CASHOUT":
+      return "Emote cash-out";
+    case "EMOTE_BUY":
+      return "Bought emote";
+    case "EMOTE_SALE":
+      return "Sold emote";
+    case "POST_BOOST":
+      return "Post boost";
+    case "SPARK_TIP":
+      return "Spark tip";
+    case "TIP_EARN":
+      return "Tip received";
     default:
       return reason.replaceAll("_", " ");
   }
@@ -44,6 +59,26 @@ export default async function WalletPage() {
   const purchased = transactions
     .filter((t) => t.reason === "SPARK_PURCHASE")
     .reduce((s, t) => s + t.amount, 0);
+
+  // Earnings from selling emotes (uncashed only)
+  const [earnedAgg, cashedAgg] = await Promise.all([
+    prisma.transaction.aggregate({
+      where: { userId: user.id, reason: "EMOTE_SALE" },
+      _sum: { amount: true },
+    }),
+    prisma.transaction.aggregate({
+      where: { userId: user.id, reason: "EMOTE_CASHOUT_REDEEMED" },
+      _sum: { amount: true },
+    }),
+  ]);
+  const totalEarned = earnedAgg._sum.amount ?? 0;
+  const totalCashed = cashedAgg._sum.amount ?? 0;
+  const uncashedSparks = totalEarned + totalCashed;
+
+  // Best pack available at 50% redemption rate
+  const redeemable = Math.floor(uncashedSparks * 0.5);
+  const sortedPacks = [...SPARK_PACKS].sort((a, b) => b.sparks - a.sparks);
+  const bestPack = sortedPacks.find((p) => p.sparks <= redeemable) ?? null;
 
   return (
     <div className="px-4 py-4">
@@ -71,17 +106,50 @@ export default async function WalletPage() {
         </div>
       </div>
 
+      <Link
+        href="/app/market"
+        className="mt-5 flex items-center justify-between rounded-2xl border border-mint/25 bg-gradient-to-r from-mint/10 to-transparent px-4 py-3"
+      >
+        <div>
+          <p className="font-display text-base font-600">Emote Market</p>
+          <p className="text-xs text-muted">
+            Sell rare emotes · earn real ₪ value.
+          </p>
+        </div>
+        <span className="text-mint">→</span>
+      </Link>
+
+      {uncashedSparks >= 50 || totalEarned > 0 ? (
+        <CashoutEarningsButton
+          availableSparks={uncashedSparks}
+          bestPackLabel={bestPack?.label ?? null}
+          bestPackSparks={bestPack?.sparks ?? null}
+        />
+      ) : null}
+
       <Suspense fallback={null}>
         <BuySparks
           packs={SPARK_PACKS}
-          paymentsReady={stripeConfigured()}
-          testMode={isStripeTestMode()}
+          paymentsReady={lemonConfigured()}
+          testMode={isLemonTestMode()}
           isAdmin={user.isAdmin}
         />
       </Suspense>
 
       <div className="mt-8 space-y-3 rounded-2xl border border-line bg-ink-2 p-4 text-sm">
         <h2 className="font-display text-lg font-600">How you earn</h2>
+        <p className="text-muted">
+          <span className="font-semibold text-mint">Boost posts</span> — pin your
+          post to the top for ✦50 (burned).
+        </p>
+        <p className="text-muted">
+          <span className="font-semibold text-mint">Tip creators</span> — send
+          ✦5–25 on any post to support them.
+        </p>
+        <p className="text-muted">
+          <span className="font-semibold text-mint">Shop & map</span> — cosmetics,
+          stickers, pixels, auctions.
+        </p>
         <p className="text-muted">
           <span className="font-semibold text-mint">+1 Spark</span> when someone
           unique watches your post or clip.
@@ -93,7 +161,10 @@ export default async function WalletPage() {
         <p className="text-muted">
           <span className="font-semibold text-mint">✦1</span> claims a pixel on
           the{" "}
-          <Link href="/app/map" className="font-semibold text-warm underline-offset-2 hover:underline">
+          <Link
+            href="/app/map"
+            className="font-semibold text-warm underline-offset-2 hover:underline"
+          >
             Pixel Map
           </Link>
           .

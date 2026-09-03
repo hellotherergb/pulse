@@ -221,6 +221,10 @@ export default async function AuctionPage() {
         <Link href="/app/shop" className="text-mint hover:underline">
           ← Shop
         </Link>
+        {" · "}
+        <Link href="/app/market" className="text-mint hover:underline">
+          Spark Market
+        </Link>
       </p>
     </main>
   );
