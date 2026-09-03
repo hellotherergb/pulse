@@ -32,6 +32,7 @@ export function TopBar({
         ) : null}
         <Link
           href="/app/market"
+          prefetch
           aria-label="Spark Market"
           className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-muted transition hover:border-mint/40 hover:text-mint"
         >
@@ -42,6 +43,7 @@ export function TopBar({
         </Link>
         <Link
           href="/app/map"
+          prefetch
           aria-label="Pixel Map"
           className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-muted transition hover:border-mint/40 hover:text-mint"
         >
@@ -54,6 +56,7 @@ export function TopBar({
         </Link>
         <Link
           href="/app/messages"
+          prefetch
           aria-label="Messages"
           className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-muted transition hover:border-mint/40 hover:text-mint"
         >
@@ -63,6 +66,7 @@ export function TopBar({
         </Link>
         <Link
           href="/app/wallet"
+          prefetch
           className="inline-flex items-center gap-1.5 rounded-full border border-mint/30 bg-mint/10 px-3 py-1 text-sm font-semibold text-mint transition hover:bg-mint/20"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">

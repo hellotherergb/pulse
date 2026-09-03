@@ -44,7 +44,7 @@ async function HomeFeed() {
         },
       },
       orderBy: { createdAt: "desc" },
-      take: 40,
+      take: 20,
     }),
     prisma.story.findMany({
       where: { expiresAt: { gt: new Date() } },
@@ -66,7 +66,7 @@ async function HomeFeed() {
     }),
   ]);
 
-  const posts = sortFeedPosts(postsRaw).slice(0, 20);
+  const posts = sortFeedPosts(postsRaw);
 
   const postIds = posts.map((p) => p.id);
   const authorIds = [...new Set(posts.map((p) => p.authorId))];
