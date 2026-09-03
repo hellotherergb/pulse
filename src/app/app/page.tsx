@@ -34,6 +34,14 @@ async function HomeFeed() {
         createdAt: true,
         authorId: true,
         author: { select: authorSelect },
+        listing: {
+          select: {
+            id: true,
+            status: true,
+            priceSparks: true,
+            emote: { select: { name: true, glyph: true, imageUrl: true } },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
       take: 40,
@@ -102,7 +110,7 @@ async function HomeFeed() {
             key={post.id}
             post={{
               id: post.id,
-              type: post.type as "TEXT" | "IMAGE" | "CLIP",
+              type: post.type as "TEXT" | "IMAGE" | "CLIP" | "OFFER",
               body: post.body,
               mediaUrl: post.mediaUrl,
               viewsCount: post.viewsCount,
@@ -111,6 +119,16 @@ async function HomeFeed() {
               boostedUntil: post.boostedUntil,
               createdAt: post.createdAt,
               author: post.author,
+              offer: post.listing
+                ? {
+                    listingId: post.listing.id,
+                    status: post.listing.status,
+                    priceSparks: post.listing.priceSparks,
+                    emoteName: post.listing.emote.name,
+                    emoteGlyph: post.listing.emote.glyph,
+                    emoteImageUrl: post.listing.emote.imageUrl,
+                  }
+                : null,
             }}
             liked={likedSet.has(post.id)}
             following={followingSet.has(post.authorId)}

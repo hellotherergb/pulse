@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LikeButton, FollowButton, DeletePostButton, ReportButton, BoostPostButton, TipPostButton } from "./action-buttons";
+import { BuyListingButton } from "./market-actions-ui";
 import { ViewTracker } from "./view-tracker";
 import { Avatar, NameWithBadge } from "./avatar";
 import { BOOST_COST } from "@/lib/spark-spend-config";
@@ -14,9 +15,18 @@ type Author = {
   equippedTitle: string;
 };
 
+export type PostOffer = {
+  listingId: string;
+  status: string;
+  priceSparks: number;
+  emoteName: string;
+  emoteGlyph: string;
+  emoteImageUrl: string;
+};
+
 export type PostCardData = {
   id: string;
-  type: "TEXT" | "IMAGE" | "CLIP";
+  type: "TEXT" | "IMAGE" | "CLIP" | "OFFER";
   body: string;
   mediaUrl: string;
   viewsCount: number;
@@ -25,6 +35,7 @@ export type PostCardData = {
   boostedUntil: Date | string | null;
   createdAt: Date | string;
   author: Author;
+  offer?: PostOffer | null;
 };
 
 type PostCardProps = {
@@ -80,6 +91,39 @@ export function PostCard({ post, liked, following, isOwn, sparksBalance }: PostC
               {post.body}
             </p>
           )}
+
+          {post.type === "OFFER" && post.offer ? (
+            <div className="mt-3 flex items-center gap-3 rounded-2xl border border-mint/30 bg-mint/5 px-3 py-3">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-mint/25 bg-ink text-3xl">
+                {post.offer.emoteImageUrl || post.mediaUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={post.offer.emoteImageUrl || post.mediaUrl}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  post.offer.emoteGlyph
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-mint">
+                  Emote offer
+                </p>
+                <p className="font-semibold text-warm">{post.offer.emoteName}</p>
+                <p className="text-sm font-bold text-mint">✦{post.offer.priceSparks}</p>
+              </div>
+              {post.offer.status === "OPEN" && !isOwn ? (
+                <BuyListingButton listingId={post.offer.listingId} price={post.offer.priceSparks} />
+              ) : post.offer.status === "OPEN" && isOwn ? (
+                <span className="text-xs text-muted">Listed</span>
+              ) : (
+                <span className="text-xs font-semibold text-muted">
+                  {post.offer.status === "SOLD" ? "Sold" : "Closed"}
+                </span>
+              )}
+            </div>
+          ) : null}
 
           {post.type === "IMAGE" && post.mediaUrl && (
             // eslint-disable-next-line @next/next/no-img-element

@@ -142,11 +142,19 @@ export default async function MarketPage() {
                       suggested ✦{ask.sparks}
                     </p>
                   </div>
-                  {listed ? (
-                    <span className="text-xs text-muted">Listed</span>
-                  ) : (
-                    <ListEmoteButton ownedEmoteId={o.id} suggested={ask.sparks} />
-                  )}
+                  <div className="flex flex-col items-end gap-1">
+                    {listed ? (
+                      <span className="text-xs text-muted">Listed</span>
+                    ) : (
+                      <ListEmoteButton ownedEmoteId={o.id} suggested={ask.sparks} />
+                    )}
+                    <Link
+                      href={`/app/create?offer=${o.id}`}
+                      className="text-xs font-semibold text-mint"
+                    >
+                      Post offer
+                    </Link>
+                  </div>
                 </li>
               );
             })}

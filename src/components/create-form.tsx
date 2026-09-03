@@ -3,11 +3,38 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useRef, useState } from "react";
 import { createPostAction, createStoryAction } from "@/lib/actions";
+import { createOfferPostAction } from "@/lib/market-actions";
 import { compressImageFile } from "@/lib/compress-image";
 
-export function CreateForm({ defaultTab = "post" }: { defaultTab?: string }) {
+type OwnedOffer = {
+  id: string;
+  name: string;
+  glyph: string;
+  imageUrl: string;
+  suggested: number;
+};
+
+export function CreateForm({
+  defaultTab = "post",
+  defaultOfferId,
+  ownedEmotes = [],
+}: {
+  defaultTab?: string;
+  defaultOfferId?: string;
+  ownedEmotes?: OwnedOffer[];
+}) {
   const router = useRouter();
-  const [tab, setTab] = useState(defaultTab === "story" ? "story" : "post");
+  const [tab, setTab] = useState(
+    defaultTab === "story" ? "story" : defaultTab === "offer" ? "offer" : "post",
+  );
+  const [offerId, setOfferId] = useState(
+    defaultOfferId && ownedEmotes.some((e) => e.id === defaultOfferId)
+      ? defaultOfferId
+      : ownedEmotes[0]?.id ?? "",
+  );
+  const [offerPrice, setOfferPrice] = useState(
+    String(ownedEmotes.find((e) => e.id === defaultOfferId)?.suggested ?? ownedEmotes[0]?.suggested ?? 8),
+  );
   const [type, setType] = useState<"TEXT" | "IMAGE" | "CLIP">("TEXT");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -122,10 +149,29 @@ export function CreateForm({ defaultTab = "post" }: { defaultTab?: string }) {
     }
   }
 
+  async function onOffer(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!beginSubmit()) return;
+    const form = e.currentTarget;
+    const body = String(new FormData(form).get("body") || "");
+    try {
+      setStatus("Posting offer…");
+      const res = await createOfferPostAction(offerId, Number(offerPrice), body);
+      if (res && "error" in res && res.error) {
+        fail(res.error);
+        return;
+      }
+      setStatus("Done");
+      router.replace("/app");
+    } catch {
+      fail("Something went wrong. Try again.");
+    }
+  }
+
   return (
     <div className="px-4 py-4">
       <div className="mb-4 flex rounded-full bg-ink-2 p-1">
-        {(["post", "story"] as const).map((t) => (
+        {(["post", "offer", "story"] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -140,7 +186,7 @@ export function CreateForm({ defaultTab = "post" }: { defaultTab?: string }) {
               tab === t ? "bg-mint text-ink" : "text-muted"
             }`}
           >
-            {t}
+              {t === "offer" ? "Offer" : t}
           </button>
         ))}
       </div>
@@ -151,7 +197,77 @@ export function CreateForm({ defaultTab = "post" }: { defaultTab?: string }) {
         </p>
       )}
 
-      {tab === "post" ? (
+      {tab === "offer" ? (
+        ownedEmotes.length === 0 ? (
+          <p className="rounded-2xl border border-line bg-ink-2 px-4 py-6 text-sm text-muted">
+            Buy or win an emote first, then you can post an offer so others can buy it.
+          </p>
+        ) : (
+          <form
+            onSubmit={onOffer}
+            className={`space-y-4 ${pending ? "pointer-events-none opacity-80" : ""}`}
+            aria-busy={pending}
+          >
+            <p className="text-sm text-muted">
+              Pick an emote you own. This lists it and posts the offer on Home so people can buy it.
+            </p>
+            <ul className="space-y-2">
+              {ownedEmotes.map((e) => (
+                <li key={e.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOfferId(e.id);
+                      setOfferPrice(String(e.suggested));
+                    }}
+                    className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left ${
+                      offerId === e.id
+                        ? "border-mint/50 bg-mint/10"
+                        : "border-line bg-ink-2"
+                    }`}
+                  >
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-line bg-ink text-2xl">
+                      {e.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={e.imageUrl} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        e.glyph
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-semibold text-warm">{e.name}</span>
+                      <span className="text-xs text-muted">Suggested ✦{e.suggested}</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <label className="block text-sm">
+              <span className="text-xs text-muted">Ask price (Sparks)</span>
+              <input
+                type="number"
+                min={8}
+                value={offerPrice}
+                onChange={(e) => setOfferPrice(e.target.value)}
+                className="mt-1 w-full rounded-2xl border border-line bg-ink-2 px-4 py-3 text-warm outline-none focus:border-mint/50"
+              />
+            </label>
+            <textarea
+              name="body"
+              rows={3}
+              placeholder="Optional caption — why they should buy it"
+              className="w-full resize-none rounded-2xl border border-line bg-ink-2 px-4 py-3 text-warm outline-none placeholder:text-muted focus:border-mint/50"
+            />
+            <button
+              type="submit"
+              disabled={pending || !offerId}
+              className="w-full rounded-2xl bg-mint py-3 font-display text-base font-700 text-ink transition hover:bg-mint-dim disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {pending ? status ?? "Posting…" : "Post offer"}
+            </button>
+          </form>
+        )
+      ) : tab === "post" ? (
         <form
           onSubmit={onPost}
           className={`space-y-4 ${pending ? "pointer-events-none opacity-80" : ""}`}
