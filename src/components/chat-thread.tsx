@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { sendMessageAction } from "@/lib/dm-actions";
 import { STICKER_PACKS } from "@/lib/stickers";
+import { uploadMediaFile } from "@/lib/upload-client";
 import { SafeImage } from "./safe-image";
 
 type Msg = {
@@ -78,18 +79,15 @@ export function ChatThread({
     setUploading(true);
     setError(null);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Upload failed");
+      const uploaded = await uploadMediaFile(file);
+      if ("error" in uploaded) {
+        setError(uploaded.error);
         return;
       }
       const sendRes = await sendMessageAction(
         conversationId,
-        data.url,
-        data.kind === "VIDEO" ? "VIDEO" : "IMAGE",
+        uploaded.url,
+        uploaded.kind === "VIDEO" ? "VIDEO" : "IMAGE",
       );
       if (sendRes?.error) setError(sendRes.error);
       router.refresh();

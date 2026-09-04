@@ -5,6 +5,8 @@ import { FormEvent, useRef, useState } from "react";
 import { createPostAction, createStoryAction } from "@/lib/actions";
 import { createOfferPostAction } from "@/lib/market-actions";
 import { compressImageFile } from "@/lib/compress-image";
+import { MAX_MEDIA_BYTES } from "@/lib/media-limits";
+import { uploadMediaFile } from "@/lib/upload-client";
 
 type OwnedOffer = {
   id: string;
@@ -48,6 +50,8 @@ export function CreateForm({
     if (!file.type.startsWith("image/") || file.type === "image/gif") {
       return file;
     }
+    // Don't try to canvas-compress huge photos (1GB) — upload as-is.
+    if (file.size > 12 * 1024 * 1024) return file;
     const blob = await compressImageFile(file, { maxSize: 1600, quality: 0.82 });
     return new File([blob], file.name.replace(/\.\w+$/, ".jpg") || "photo.jpg", {
       type: "image/jpeg",
@@ -59,14 +63,28 @@ export function CreateForm({
   ): Promise<{ url: string } | { error: string } | null> {
     const raw = fileInput?.files?.[0];
     if (!raw) return null;
+    if (raw.size > MAX_MEDIA_BYTES) {
+      return { error: "File too large (max 1GB)." };
+    }
     setStatus("Uploading…");
     const file = await prepareFile(raw);
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
-    const data = await res.json();
-    if (!res.ok) return { error: data.error ?? "Upload failed" };
-    return { url: data.url };
+    const uploaded = await uploadMediaFile(file, (pct) => {
+      setStatus(`Uploading… ${pct}%`);
+    });
+    if ("error" in uploaded) return { error: uploaded.error };
+    return { url: uploaded.url };
+  }
+
+  function onMediaPicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file && file.size > MAX_MEDIA_BYTES) {
+      e.target.value = "";
+      setFileName(null);
+      setError("File too large (max 1GB).");
+      return;
+    }
+    setError(null);
+    setFileName(file?.name ?? null);
   }
 
   function beginSubmit(): boolean {
@@ -306,7 +324,7 @@ export function CreateForm({
                 type="file"
                 accept={type === "IMAGE" ? "image/*" : "video/*"}
                 className="hidden"
-                onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
+                onChange={onMediaPicked}
               />
               <button
                 type="button"
@@ -319,8 +337,8 @@ export function CreateForm({
                 </svg>
                 {fileName ??
                   (type === "IMAGE"
-                    ? "Choose a photo (max 4MB)"
-                    : "Choose a short clip (max 4MB)")}
+                    ? "Choose a photo (max 1GB)"
+                    : "Choose a clip (max 1GB)")}
               </button>
               <input
                 name="mediaUrl"
@@ -349,7 +367,7 @@ export function CreateForm({
             type="file"
             accept="image/*"
             className="hidden"
-            onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
+            onChange={onMediaPicked}
           />
           <button
             type="button"
@@ -360,7 +378,7 @@ export function CreateForm({
               <path d="M12 16V4m0 0-4 4m4-4 4 4" />
               <path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" />
             </svg>
-            {fileName ?? "Choose a story image from your device"}
+            {fileName ?? "Choose a story image (max 1GB)"}
           </button>
           <input
             name="mediaUrl"

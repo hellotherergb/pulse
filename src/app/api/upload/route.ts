@@ -7,10 +7,11 @@ import crypto from "crypto";
 import { authOptions } from "@/lib/auth";
 import { moderateImage } from "@/lib/moderate-image";
 
-export const maxDuration = 60;
+// Vercel Functions cap request bodies at ~4.5MB. Files up to 1GB go through
+// `/api/upload/token` (browser → Blob), not this route.
+const SERVER_BODY_MAX = 4.5 * 1024 * 1024;
 
-// Vercel serverless body limit is ~4.5MB on hobby; keep headroom.
-const MAX_BYTES = 4 * 1024 * 1024;
+export const maxDuration = 60;
 
 const EXT_BY_MIME: Record<string, string> = {
   "image/jpeg": ".jpg",
@@ -46,13 +47,13 @@ export async function POST(req: Request) {
     );
   }
 
-  if (file.size > MAX_BYTES) {
+  if (file.size > SERVER_BODY_MAX) {
     return NextResponse.json(
       {
         error:
-          "File too large (max 4MB on the free plan). Compress photos/clips or paste a URL.",
+          "This upload path maxes out at 4.5MB. Photos and clips up to 1GB go through the in-app uploader.",
       },
-      { status: 400 },
+      { status: 413 },
     );
   }
 

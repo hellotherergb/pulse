@@ -187,6 +187,8 @@ async function checkWithNsfwJs(buffer: Buffer) {
   }
 }
 
+const MODERATION_FETCH_MAX = 20 * 1024 * 1024;
+
 async function fetchUrlBuffer(url: string): Promise<Buffer | null> {
   try {
     const res = await fetch(url, {
@@ -198,7 +200,11 @@ async function fetchUrlBuffer(url: string): Promise<Buffer | null> {
     if (ctype && !ctype.startsWith("image/") && !ctype.includes("octet-stream")) {
       return null;
     }
-    return Buffer.from(await res.arrayBuffer());
+    const len = Number(res.headers.get("content-length") || 0);
+    if (len > MODERATION_FETCH_MAX) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length > MODERATION_FETCH_MAX) return null;
+    return buf;
   } catch {
     return null;
   }
@@ -220,7 +226,36 @@ export async function moderateImage(opts: {
     return { ok: true };
   }
 
+  // Huge photos (up to 1GB) can't be loaded into NSFW.js. Prefer URL scanning.
+  if (
+    opts.url?.startsWith("http") &&
+    sightengineConfigured() &&
+    (!opts.buffer || opts.buffer.length > MODERATION_FETCH_MAX)
+  ) {
+    try {
+      const data = await checkWithSightengine({ url: opts.url });
+      if (data.status !== "failure" && !data.error) {
+        const verdict = evaluateSightengine(data);
+        if (!verdict.block) return { ok: true };
+        if (verdict.critical) {
+          await createImageBanRequest(opts.userId, verdict.reason);
+        }
+        return {
+          ok: false,
+          error:
+            "This image was blocked by Pulse safety checks and was not uploaded.",
+          banRequest: verdict.critical,
+        };
+      }
+    } catch (err) {
+      console.error("image URL moderation failed", err);
+    }
+  }
+
   let buffer = opts.buffer;
+  if (buffer && buffer.length > MODERATION_FETCH_MAX) {
+    return { ok: true };
+  }
   if (!buffer && opts.url) {
     if (opts.url.startsWith("data:image/")) {
       const base64 = opts.url.split(",")[1];
