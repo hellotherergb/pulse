@@ -72,10 +72,10 @@ export async function updateAvatarAction(url: string) {
   });
 
   revalidateUser(user.id);
-  // Revalidate profile only — refreshing the whole /app layout remounts every
-  // avatar in the feed and looks like the PFP is glitching.
   revalidatePath("/app/profile");
   revalidatePath(`/app/u/${user.handle}`);
+  revalidatePath("/app");
+  revalidatePath("/app/foryou");
   return { ok: true };
 }
 

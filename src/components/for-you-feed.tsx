@@ -12,6 +12,7 @@ import {
 import { boostPostAction, tipPostAction } from "@/lib/spark-spend";
 import { BOOST_COST, TIP_PRESETS } from "@/lib/spark-spend-config";
 import { ReportPostButton } from "./report-user";
+import { Avatar } from "./avatar";
 
 type Clip = {
   id: string;
@@ -108,12 +109,7 @@ export function ForYouFeed({
           href={`/app/u/${clip.author.handle}`}
           className="pointer-events-auto inline-flex items-center gap-2"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={clip.author.avatarUrl}
-            alt=""
-            className="h-10 w-10 rounded-full border border-white/20"
-          />
+          <Avatar src={clip.author.avatarUrl} size={40} />
           <span className="font-semibold">@{clip.author.handle}</span>
         </Link>
         <p className="text-sm leading-snug text-white/90">{clip.body}</p>

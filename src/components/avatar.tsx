@@ -3,7 +3,12 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { getCosmetic } from "@/lib/cosmetics";
 
-const FALLBACK = "/avatars/a1.svg";
+/** Inline so a missing file never leaves a blank colored circle. */
+const FALLBACK =
+  "data:image/svg+xml," +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3dffb0"/><stop offset="1" stop-color="#121821"/></linearGradient></defs><rect width="80" height="80" fill="url(#g)"/><circle cx="40" cy="30" r="14" fill="#f4f1ec"/><ellipse cx="40" cy="68" rx="24" ry="18" fill="#f4f1ec"/></svg>`,
+  );
 
 function safeSrc(src: string) {
   if (!src || src === "null" || src === "undefined") return FALLBACK;
@@ -27,28 +32,37 @@ export function Avatar({
   }, [src]);
   const frame = frameId ? getCosmetic(frameId) : undefined;
   const ring = frame ? 3 : 0;
-  const inner = size - ring * 2;
+  const inner = Math.max(size - ring * 2, 1);
   const emojiSize = Math.max(11, Math.round(size * 0.34));
   const imgSrc = broken ? FALLBACK : safeSrc(src);
 
-  if (!frame) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={imgSrc}
-        alt=""
-        draggable={false}
-        onError={() => setBroken(true)}
-        className="shrink-0 rounded-full bg-ink-3 object-cover"
-        style={{
-          width: size,
-          height: size,
-          maxWidth: "none",
-          display: "block",
-        }}
-      />
-    );
-  }
+  const photo = (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={imgSrc}
+      alt=""
+      draggable={false}
+      onError={() => {
+        if (imgSrc !== FALLBACK) setBroken(true);
+      }}
+      className="rounded-full object-cover"
+      style={{
+        display: "block",
+        width: frame ? inner : size,
+        height: frame ? inner : size,
+        maxWidth: "none",
+        maxHeight: "none",
+        margin: frame ? ring : 0,
+        objectFit: "cover",
+        background: "#1a2330",
+        position: frame ? "relative" : undefined,
+        zIndex: frame ? 1 : undefined,
+        boxShadow: frame ? "0 0 0 1px var(--ink)" : undefined,
+      }}
+    />
+  );
+
+  if (!frame) return photo;
 
   const spins =
     frame.effect === "spin" ||
@@ -61,46 +75,23 @@ export function Avatar({
         ? "frame-ring-spin"
         : "";
 
-  // Full gradient disk sits BEHIND the photo (z-index 0). Photo is relative
-  // with z-index 1 so transform animations on the ring can never cover it.
   const ringStyle: CSSProperties = {
     position: "absolute",
     inset: 0,
     borderRadius: "9999px",
     background: frame.value,
     zIndex: 0,
+    WebkitMask: `radial-gradient(farthest-side, transparent calc(100% - ${ring + 1}px), #000 calc(100% - ${ring}px))`,
+    mask: `radial-gradient(farthest-side, transparent calc(100% - ${ring + 1}px), #000 calc(100% - ${ring}px))`,
   };
 
   return (
     <span
-      className="relative inline-block shrink-0"
+      className="relative inline-block shrink-0 rounded-full"
       style={{ width: size, height: size }}
     >
-      <span
-        aria-hidden
-        className={`pointer-events-none ${spinClass}`}
-        style={ringStyle}
-      />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={imgSrc}
-        alt=""
-        draggable={false}
-        onError={() => setBroken(true)}
-        className="rounded-full bg-ink-3 object-cover"
-        style={{
-          position: "relative",
-          zIndex: 1,
-          display: "block",
-          width: inner,
-          height: inner,
-          maxWidth: "none",
-          maxHeight: "none",
-          margin: ring,
-          objectFit: "cover",
-          boxShadow: "0 0 0 1px #0b0f14",
-        }}
-      />
+      <span aria-hidden className={`pointer-events-none ${spinClass}`} style={ringStyle} />
+      {photo}
       {frame.emoji && (
         <span
           className="pointer-events-none absolute -right-0.5 -top-0.5 z-[2] leading-none"
