@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Avatar } from "./avatar";
+import { SafeImage } from "./safe-image";
 
 type StoryItem = {
   id: string;
@@ -44,14 +46,7 @@ export function StoriesRail({ stories }: { stories: StoryItem[] }) {
             className="flex w-16 shrink-0 flex-col items-center gap-1"
           >
             <span className="rounded-full bg-gradient-to-br from-mint to-mint-dim p-[2px]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={s.author.avatarUrl}
-                alt=""
-                className="rounded-full border-2 border-ink object-cover"
-                style={{ height: 52, width: 52 }}
-                draggable={false}
-              />
+              <Avatar src={s.author.avatarUrl} size={52} />
             </span>
             <span className="w-full truncate text-[10px] text-muted">
               {s.author.handle}
@@ -69,8 +64,7 @@ export function StoriesRail({ stories }: { stories: StoryItem[] }) {
             className="relative h-full w-full max-w-[430px]"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <SafeImage
               src={active.mediaUrl}
               alt=""
               className="h-full w-full object-cover"
@@ -78,12 +72,7 @@ export function StoriesRail({ stories }: { stories: StoryItem[] }) {
             <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/70 to-transparent p-4 pt-10">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={active.author.avatarUrl}
-                    alt=""
-                    className="h-8 w-8 rounded-full"
-                  />
+                  <Avatar src={active.author.avatarUrl} size={32} />
                   <div>
                     <p className="text-sm font-semibold">{active.author.name}</p>
                     <p className="text-xs text-white/70">@{active.author.handle}</p>

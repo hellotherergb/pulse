@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { sendMessageAction } from "@/lib/dm-actions";
 import { STICKER_PACKS } from "@/lib/stickers";
+import { SafeImage } from "./safe-image";
 
 type Msg = {
   id: string;
@@ -142,8 +143,7 @@ export function ChatThread({
                     className="flex flex-col items-center rounded-lg p-1 transition hover:bg-ink-3"
                   >
                     {e.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <SafeImage
                         src={e.imageUrl}
                         alt={e.name}
                         className="h-12 w-12 rounded-lg object-cover"
@@ -252,7 +252,7 @@ function MessageBubble({ msg, mine }: { msg: Msg; mine: boolean }) {
     if (isImage) {
       return (
         // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <SafeImage
           src={msg.body}
           alt=""
           className="animate-sticker-pop h-28 w-28 rounded-2xl object-cover drop-shadow-[0_4px_12px_rgba(0,0,0,0.4)]"
@@ -269,7 +269,7 @@ function MessageBubble({ msg, mine }: { msg: Msg; mine: boolean }) {
   if (msg.kind === "IMAGE") {
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img
+      <SafeImage
         src={msg.body}
         alt=""
         className="max-h-64 max-w-[75%] rounded-2xl object-cover"

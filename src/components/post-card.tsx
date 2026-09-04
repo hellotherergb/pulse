@@ -3,6 +3,7 @@ import { LikeButton, FollowButton, DeletePostButton, ReportButton, BoostPostButt
 import { BuyListingButton } from "./market-actions-ui";
 import { ViewTracker } from "./view-tracker";
 import { Avatar, NameWithBadge } from "./avatar";
+import { SafeImage } from "./safe-image";
 import { BOOST_COST } from "@/lib/spark-spend-config";
 
 type Author = {
@@ -96,8 +97,7 @@ export function PostCard({ post, liked, following, isOwn, sparksBalance }: PostC
             <div className="mt-3 flex items-center gap-3 rounded-2xl border border-mint/30 bg-mint/5 px-3 py-3">
               <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-mint/25 bg-ink text-3xl">
                 {post.offer.emoteImageUrl || post.mediaUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <SafeImage
                     src={post.offer.emoteImageUrl || post.mediaUrl}
                     alt=""
                     className="h-full w-full object-cover"
@@ -126,8 +126,7 @@ export function PostCard({ post, liked, following, isOwn, sparksBalance }: PostC
           ) : null}
 
           {post.type === "IMAGE" && post.mediaUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <SafeImage
               src={post.mediaUrl}
               alt=""
               className="mt-3 max-h-80 w-full rounded-2xl object-cover"

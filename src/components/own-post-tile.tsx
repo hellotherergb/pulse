@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { deleteOwnPostAction } from "@/lib/actions";
+import { SafeImage } from "./safe-image";
 
 export function OwnPostTile({
   post,
@@ -20,8 +21,7 @@ export function OwnPostTile({
   return (
     <div className="group relative aspect-square overflow-hidden rounded-lg bg-ink-3">
       {post.type === "IMAGE" || (post.type === "OFFER" && post.mediaUrl) ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={post.mediaUrl} alt="" className="h-full w-full object-cover" />
+        <SafeImage src={post.mediaUrl} alt="" className="h-full w-full object-cover" />
       ) : post.type === "CLIP" ? (
         <video
           src={post.mediaUrl}

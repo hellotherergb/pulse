@@ -237,6 +237,34 @@ a {
   animation: nav-progress 0.9s ease-in-out infinite;
 }
 
+@keyframes scare-zoom {
+  0% { transform: scale(0.2); opacity: 0; }
+  35% { transform: scale(1.25); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.animate-scare-zoom { animation: scare-zoom 0.28s ease-out both; }
+
+@keyframes scare-static {
+  0% { background: repeating-linear-gradient(0deg, #000 0 2px, #fff 2px 4px); }
+  50% { background: repeating-linear-gradient(90deg, #111 0 3px, #eee 3px 5px); }
+  100% { background: repeating-linear-gradient(0deg, #000 0 2px, #fff 2px 4px); }
+}
+.animate-scare-static { animation: scare-static 0.08s steps(2) infinite; }
+
+@keyframes scare-crawl {
+  0% { transform: translate(-50%, -120%) rotate(-20deg); }
+  70% { transform: translate(-50%, 40%) rotate(12deg); }
+  100% { transform: translate(-50%, 10%) rotate(-8deg); }
+}
+.animate-scare-crawl { animation: scare-crawl 0.55s cubic-bezier(0.2, 1.4, 0.3, 1) both; }
+
+@keyframes scare-flash {
+  0%, 20%, 40% { background: #fff; }
+  10%, 30% { background: #000; }
+  100% { background: #fff; }
+}
+.animate-scare-flash { animation: scare-flash 0.35s linear; }
+
 /* Reddit Place–style map page */
 .place-shell {
   margin-top: -0.25rem;

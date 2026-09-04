@@ -17,6 +17,8 @@ export function isAllowedMediaUrl(url: string): boolean {
     // Vercel Blob
     if (u.hostname.endsWith(".blob.vercel-storage.com")) return true;
     if (u.hostname === "blob.vercel-storage.com") return true;
+    if (u.hostname.endsWith(".vercel-storage.com")) return true;
+    if (u.hostname.endsWith("public.blob.vercel-storage.com")) return true;
     // Common external media (seed / paste URLs)
     if (
       u.hostname.endsWith("unsplash.com") ||

@@ -28,6 +28,7 @@ import {
 } from "@/lib/auction-actions";
 import { formatIls } from "@/lib/spark-packs";
 import { ensureLemonWebhook, isLemonTestMode, lemonConfigured } from "@/lib/lemon";
+import { JumpScareButton } from "@/components/jump-scare";
 
 export default async function AdminPage() {
   const me = await getCurrentUser();
@@ -179,6 +180,8 @@ export default async function AdminPage() {
           </Link>
         </div>
       </div>
+
+      <JumpScareButton />
 
       <section className="space-y-3">
         <h2 className="font-display text-lg font-semibold">Sparks sales (₪)</h2>

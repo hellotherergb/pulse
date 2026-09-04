@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import { getCosmetic } from "@/lib/cosmetics";
+import { SafeImage } from "./safe-image";
 
 /** Inline so a missing file never leaves a blank colored circle. */
 const FALLBACK =
@@ -12,7 +13,6 @@ const FALLBACK =
 
 function safeSrc(src: string) {
   if (!src || src === "null" || src === "undefined") return FALLBACK;
-  // Leftover local upload paths from before Blob — broken on Vercel
   if (src.startsWith("/uploads/")) return FALLBACK;
   return src;
 }
@@ -26,25 +26,17 @@ export function Avatar({
   frameId?: string;
   size?: number;
 }) {
-  const [broken, setBroken] = useState(false);
-  useEffect(() => {
-    setBroken(false);
-  }, [src]);
   const frame = frameId ? getCosmetic(frameId) : undefined;
   const ring = frame ? 3 : 0;
   const inner = Math.max(size - ring * 2, 1);
   const emojiSize = Math.max(11, Math.round(size * 0.34));
-  const imgSrc = broken ? FALLBACK : safeSrc(src);
+  const imgSrc = safeSrc(src);
 
   const photo = (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <SafeImage
       src={imgSrc}
+      fallback={FALLBACK}
       alt=""
-      draggable={false}
-      onError={() => {
-        if (imgSrc !== FALLBACK) setBroken(true);
-      }}
       className="rounded-full object-cover"
       style={{
         display: "block",
